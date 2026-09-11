@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { Camera, Flashlight, CloudSun, Move } from 'lucide-react';
-import { automaticForeground, clamp, cropRect, type Crop, type Draft } from './model';
+import { automaticForeground, clamp, cropRect, lightText, type Crop, type Draft } from './model';
 import { composition, prepareFonts, renderWallpaper } from './renderer';
 import type { Device } from './devices';
 import type { Messages } from './i18n';
@@ -34,7 +34,8 @@ export default function Preview({ copy, draft, image, device, onCrop, onUpload }
     });
   }
 
-  return <div className="wallpaper" style={{ aspectRatio: `${device.width}/${device.height}`, '--wallpaper-ink': draft.foreground ?? automaticForeground(draft.background) } as CSSProperties}>
+  const ink = draft.templateId === 'nowPlaying' ? lightText : draft.foreground ?? automaticForeground(draft.background);
+  return <div className="wallpaper" style={{ aspectRatio: `${device.width}/${device.height}`, '--wallpaper-ink': ink } as CSSProperties}>
     <canvas ref={canvas} aria-label={`${copy.previewLabel} ${draft.title} — ${draft.artist}`} />
     <button className={`artwork-hit ${image ? 'has-image' : ''}`} style={{ left: `${frame.left / 470 * 100}%`, top: `${frame.top / height * 100}%`, width: `${frame.size / 470 * 100}%`, aspectRatio: '1' }}
       aria-label={image ? copy.dragPhoto : copy.uploadPhoto}
