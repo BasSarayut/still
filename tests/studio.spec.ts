@@ -1,0 +1,80 @@
+import { expect, test } from '@playwright/test';
+
+test('photo editing, exact PNG, guide separation and draft recovery', async ({ page }) => {
+  const errors: string[] = [];
+  const externalRequests: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => { if (!request.url().startsWith('http://localhost:5173') && !request.url().startsWith('blob:') && !request.url().startsWith('data:')) externalRequests.push(request.url()); });
+  await page.goto('/');
+  await expect(page.getByLabel('รุ่น iPhone', { exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeDisabled();
+  const imageData = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200; canvas.height = 600;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = '#b88775'; context.fillRect(0, 0, 600, 600);
+    context.fillStyle = '#547575'; context.fillRect(600, 0, 600, 600);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page.locator('#photo-upload').setInputFiles({ name: 'two-colors.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') });
+  await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
+  await page.getByLabel('ชื่อเพลง / ข้อความ').fill('青色がすき。 เพลงของเรา');
+  await page.getByLabel('ศิลปิน', { exact: true }).fill('keiju');
+  await page.getByLabel('ข้อความเครดิต').fill('@my_moment');
+  await page.getByLabel('รุ่น iPhone', { exact: true }).selectOption('iPhone 12 mini');
+  await page.getByLabel('ซูมรูป', { exact: true }).fill('2');
+  const art = page.getByRole('button', { name: 'เลื่อนรูปปก ใช้ปุ่มลูกศรเพื่อจัดตำแหน่ง' });
+  await art.focus();
+  for (let index = 0; index < 20; index++) await page.keyboard.press('ArrowRight');
+  await page.getByLabel('เวลาปัจจุบัน').fill('9:99');
+  await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeDisabled();
+  await page.getByLabel('เวลาปัจจุบัน').fill('0:42');
+  await expect(page.getByText('บันทึกในเครื่องแล้ว', { exact: true })).toBeVisible();
+  const firstDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'ดาวน์โหลด PNG' }).click();
+  const saved = await firstDownload;
+  expect(saved.suggestedFilename()).toBe('still-iphone-12-mini.png');
+  const inspectPng = async () => page.evaluate(async () => {
+    const anchor = document.querySelector<HTMLAnchorElement>('.download-result a')!;
+    const image = new Image(); image.src = anchor.href; await image.decode();
+    const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+    const context = canvas.getContext('2d')!; context.drawImage(image, 0, 0);
+    const pixel = (horizontal: number, vertical: number) => [...context.getImageData(horizontal, vertical, 1, 1).data];
+    const top = context.getImageData(0, 0, canvas.width, Math.floor(canvas.height * .24)).data;
+    let uniformTop = true;
+    for (let offset = 4; offset < top.length; offset++) if (top[offset] !== top[offset % 4]) { uniformTop = false; break; }
+    return { width: image.width, height: image.height, uniformTop, cover: pixel(540, 850), data: canvas.toDataURL() };
+  });
+  const first = await inspectPng();
+  expect(first.width).toBe(1080); expect(first.height).toBe(2340);
+  expect(first.uniformTop).toBe(true);
+  expect(first.cover).toEqual([84, 117, 117, 255]);
+  await page.getByRole('switch', { name: 'จำลอง Lock Screen' }).uncheck();
+  await expect(page.locator('.lock-guides')).toHaveCount(0);
+  await page.getByRole('button', { name: 'ดาวน์โหลด PNG' }).click();
+  await expect(page.getByText('PNG พร้อมแล้ว', { exact: true })).toBeVisible();
+  const second = await inspectPng();
+  expect(second.data).toBe(first.data);
+  await expect(page.getByText('บันทึกในเครื่องแล้ว', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('ชื่อเพลง / ข้อความ')).toHaveValue('青色がすき。 เพลงของเรา');
+  await expect(page.getByLabel('รุ่น iPhone', { exact: true })).toHaveValue('iPhone 12 mini');
+  await expect(page.getByLabel('ซูมรูป', { exact: true })).toHaveValue('2');
+  await expect(page.getByLabel('ข้อความเครดิต')).toHaveValue('@my_moment');
+  await expect(page.getByRole('switch', { name: 'จำลอง Lock Screen' })).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+  expect(externalRequests).toEqual([]);
+});
+
+test('invalid upload preserves the previous editor and can be retried', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('รุ่น iPhone', { exact: true })).toBeEnabled();
+  await page.locator('#photo-upload').setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
+  await expect(page.getByRole('alert')).toContainText('เปิดรูปนี้ไม่ได้');
+  await expect(page.getByLabel('ชื่อเพลง / ข้อความ')).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeDisabled();
+  await page.getByLabel('ชื่อเพลง / ข้อความ').fill('ยังแต่งต่อได้');
+  await expect(page.getByLabel('ชื่อเพลง / ข้อความ')).toHaveValue('ยังแต่งต่อได้');
+});
