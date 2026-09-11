@@ -5,19 +5,19 @@ export function decodeImage(blob: Blob): Promise<HTMLImageElement> {
     const url = URL.createObjectURL(blob);
     const image = new Image();
     image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
-    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('เปิดรูปนี้ไม่ได้ ลองใช้ JPG, PNG หรือ WebP หากเป็น HEIC ให้แปลงเป็น JPG ก่อน')); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imageDecodeError')); };
     image.src = url;
   });
 }
 
 export function canvasBlob(canvas: HTMLCanvasElement, type = 'image/png', quality?: number): Promise<Blob> {
-  return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('สร้างรูปไม่สำเร็จ กรุณาลองอีกครั้ง')), type, quality));
+  return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('imageExportError')), type, quality));
 }
 
 export async function importImage(file: File) {
-  if (file.size > 30 * 1024 * 1024) throw new Error('รูปใหญ่เกิน 30 MB กรุณาเลือกรูปที่เล็กลง');
+  if (file.size > 30 * 1024 * 1024) throw new Error('imageSizeError');
   if (!/^image\/(jpeg|png|webp|heic|heif)$/.test(file.type) && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
-    throw new Error('กรุณาเลือกไฟล์รูป JPG, PNG หรือ WebP');
+    throw new Error('imageTypeError');
   }
   const decoded = await decodeImage(file);
   const scale = Math.min(1, 2400 / Math.max(decoded.naturalWidth, decoded.naturalHeight));
@@ -25,7 +25,7 @@ export async function importImage(file: File) {
   canvas.width = Math.max(1, Math.round(decoded.naturalWidth * scale));
   canvas.height = Math.max(1, Math.round(decoded.naturalHeight * scale));
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('เบราว์เซอร์นี้ไม่รองรับการแต่งรูป');
+  if (!context) throw new Error('canvasError');
   context.imageSmoothingQuality = 'high';
   context.drawImage(decoded, 0, 0, canvas.width, canvas.height);
   const blob = await canvasBlob(canvas);

@@ -3,22 +3,23 @@ import { Camera, Flashlight, CloudSun, Move } from 'lucide-react';
 import { automaticForeground, clamp, cropRect, type Crop, type Draft } from './model';
 import { composition, prepareFonts, renderWallpaper } from './renderer';
 import type { Device } from './devices';
+import type { Messages } from './i18n';
 
-type Props = { draft: Draft; image: HTMLImageElement | null; device: Device; onCrop: (crop: Crop) => void; onUpload: () => void };
+type Props = { copy: Messages; draft: Draft; image: HTMLImageElement | null; device: Device; onCrop: (crop: Crop) => void; onUpload: () => void };
 
-export default function Preview({ draft, image, device, onCrop, onUpload }: Props) {
+export default function Preview({ copy, draft, image, device, onCrop, onUpload }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const dragging = useRef<{ x: number; y: number; crop: Crop } | null>(null);
   const height = 470 * device.height / device.width;
   const frame = composition(height);
   useEffect(() => {
     let cancelled = false;
-    if (canvas.current) renderWallpaper(canvas.current, draft, image, device);
+    if (canvas.current) renderWallpaper(canvas.current, draft, image, device, 940, copy.emptyImage);
     void prepareFonts(draft).then(() => {
-      if (!cancelled && canvas.current) renderWallpaper(canvas.current, draft, image, device);
+      if (!cancelled && canvas.current) renderWallpaper(canvas.current, draft, image, device, 940, copy.emptyImage);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [draft, image, device]);
+  }, [draft, image, device, copy]);
 
   function pointerMove(event: PointerEvent<HTMLButtonElement>) {
     if (!dragging.current || !image) return;
@@ -34,9 +35,9 @@ export default function Preview({ draft, image, device, onCrop, onUpload }: Prop
   }
 
   return <div className="wallpaper" style={{ aspectRatio: `${device.width}/${device.height}`, '--wallpaper-ink': draft.foreground ?? automaticForeground(draft.background) } as CSSProperties}>
-    <canvas ref={canvas} aria-label={`ตัวอย่างวอลเปเปอร์ ${draft.title} — ${draft.artist}`} />
+    <canvas ref={canvas} aria-label={`${copy.previewLabel} ${draft.title} — ${draft.artist}`} />
     <button className={`artwork-hit ${image ? 'has-image' : ''}`} style={{ left: `${frame.left / 470 * 100}%`, top: `${frame.top / height * 100}%`, width: `${frame.size / 470 * 100}%`, aspectRatio: '1' }}
-      aria-label={image ? 'เลื่อนรูปปก ใช้ปุ่มลูกศรเพื่อจัดตำแหน่ง' : 'อัปโหลดรูปปก'}
+      aria-label={image ? copy.dragPhoto : copy.uploadPhoto}
       onClick={() => { if (!image) onUpload(); }}
       onPointerDown={event => { if (image) { event.currentTarget.setPointerCapture(event.pointerId); dragging.current = { x: event.clientX, y: event.clientY, crop: draft.crop }; } }}
       onPointerMove={pointerMove} onPointerUp={() => { dragging.current = null; }} onPointerCancel={() => { dragging.current = null; }}
@@ -47,10 +48,10 @@ export default function Preview({ draft, image, device, onCrop, onUpload }: Prop
           onCrop({ ...draft.crop, x: clamp(draft.crop.x + (event.key === 'ArrowRight' ? 0.03 : event.key === 'ArrowLeft' ? -0.03 : 0)), y: clamp(draft.crop.y + (event.key === 'ArrowDown' ? 0.03 : event.key === 'ArrowUp' ? -0.03 : 0)) });
         }
       }}>
-      {image && <span className="drag-hint"><Move size={13} /> ลากเพื่อจัดรูป</span>}
+      {image && <span className="drag-hint"><Move size={13} /> {copy.dragHint}</span>}
     </button>
-    {draft.showGuides && <div className="lock-guides" aria-label="นาฬิกาและวิดเจ็ตจำลอง ไม่ติดในไฟล์ PNG">
-      <div className="lock-date">Monday, 9 September</div>
+    {draft.showGuides && <div className="lock-guides" aria-label={copy.guidesLabel}>
+      <div className="lock-date">{copy.previewDate}</div>
       <div className="lock-time">9:41</div>
       <div className="lock-widgets"><span><CloudSun /><b>28°</b></span><span className="widget-placeholder" /><span className="widget-placeholder" /></div>
       <div className="lock-shortcuts"><span><Flashlight /></span><span><Camera /></span></div>

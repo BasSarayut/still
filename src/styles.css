@@ -17,6 +17,27 @@
 .upload-zone>span{color:#6a8077}
 .field-footnote{color:#637a70}
 .jump-preview{display:none}
+.language-picker{margin-left:auto;position:relative;flex-shrink:0}
+.language-picker select{width:105px;padding:8px 26px 8px 11px;appearance:none;font-size:12px;background:transparent;min-height:40px}
+.language-picker>svg{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:#607479}
+.site-header>.help-button{margin-left:0;flex-shrink:0}
+.workspace-heading h1{overflow-wrap:anywhere}
+.preview-bottom{flex-wrap:wrap}
+.preview-bottom>span{overflow-wrap:anywhere}
+html[lang=ja] .workspace-heading h1{font-size:24px}
+html[lang=ja] .template-badge{letter-spacing:0}
+html:not([lang=th]) .brand-description{text-transform:uppercase}
+@media(max-width:1100px){.brand-description{display:none}.template-badge{display:none}}
+@media(max-width:760px){
+  .site-header{gap:13px}
+  .language-picker select{font-size:16px;width:108px;height:44px}
+  .site-header>.help-button{font-size:11px}
+  .site-header>.help-button svg{display:none}
+  html[lang=ja] .workspace-heading h1{font-size:23px}
+  .export-actions{gap:8px}
+  .export-button{font-size:12px;padding-inline:12px;gap:7px}
+  .jump-preview{font-size:11px;padding-inline:3px}
+}
 @media(min-width:761px){
   .inspector{height:calc(100svh - 89px);position:sticky;top:0;display:flex;flex-direction:column;padding-top:27px}
   .inspector-heading,.save-status,.export-area{flex-shrink:0}

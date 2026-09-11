@@ -55,11 +55,11 @@ function titleText(context: CanvasRenderingContext2D, value: string, horizontal:
   fitText(context, characters.join(''), horizontal, vertical + 22, 355, size, 650);
 }
 
-export function renderWallpaper(canvas: HTMLCanvasElement, draft: Draft, image: HTMLImageElement | null, device: Device, outputWidth = 940) {
+export function renderWallpaper(canvas: HTMLCanvasElement, draft: Draft, image: HTMLImageElement | null, device: Device, outputWidth = 940, emptyLabel = 'ใส่รูปที่เป็นคุณ') {
   canvas.width = outputWidth;
   canvas.height = Math.round(outputWidth * device.height / device.width);
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('เบราว์เซอร์นี้ไม่รองรับการสร้างรูป');
+  if (!context) throw new Error('canvasError');
   const height = canvas.height / (outputWidth / 470);
   context.scale(outputWidth / 470, outputWidth / 470);
   context.fillStyle = draft.background;
@@ -85,7 +85,7 @@ export function renderWallpaper(canvas: HTMLCanvasElement, draft: Draft, image: 
     line(context, [[218, center + 12], [230, center + 2], [239, center + 9], [247, center + 3], [253, center + 12]]);
     context.textAlign = 'center';
     context.font = `15px ${fontFamily}`;
-    context.fillText('ใส่รูปที่เป็นคุณ', 235, center + 53);
+    context.fillText(emptyLabel, 235, center + 53);
     context.font = `10px ${fontFamily}`;
     context.fillText('YOUR FAVORITE MOMENT', 235, center + 75);
     context.textAlign = 'left';

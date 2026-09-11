@@ -6,6 +6,7 @@ import { canvasBlob, decodeImage, importImage } from './images';
 import { loadDraft, saveDraft } from './storage';
 import { prepareFonts, renderWallpaper } from './renderer';
 import Preview from './Preview';
+import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
   return <label className="toggle-label"><span>{children}</span><input type="checkbox" role="switch" disabled={disabled} checked={checked} onChange={event => onChange(event.target.checked)} /><span className="toggle-track" aria-hidden="true" /></label>;
@@ -16,13 +17,14 @@ function Section({ number, title, children, extra }: { number: string; title: st
 }
 
 export default function App() {
+  const { language, setLanguage, copy } = useLanguage();
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState('');
-  const [saveStatus, setSaveStatus] = useState('กำลังเปิดงาน…');
+  const [error, setError] = useState<MessageKey | null>(null);
+  const [saveStatus, setSaveStatus] = useState<MessageKey>('loadingDraft');
   const [download, setDownload] = useState<{ url: string; file: File } | null>(null);
   const [help, setHelp] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -42,9 +44,9 @@ export default function App() {
         const restored = await loadDraft();
         let restoredImage: HTMLImageElement | null = null;
         if (restored.image) restoredImage = await decodeImage(restored.image);
-        if (!cancelled) { setDraft(restored); setImage(restoredImage); setSaveStatus('บันทึกในเครื่องแล้ว'); }
+        if (!cancelled) { setDraft(restored); setImage(restoredImage); setSaveStatus('saved'); }
       } catch {
-        if (!cancelled) setSaveStatus('เปิดงานเดิมไม่ได้ · แต่งและดาวน์โหลดได้');
+        if (!cancelled) setSaveStatus('restoreError');
       } finally { if (!cancelled) setReady(true); }
     }
     void restore();
@@ -55,11 +57,11 @@ export default function App() {
     if (!ready) return;
     const current = ++revision.current;
     const timer = window.setTimeout(() => {
-      setSaveStatus('กำลังบันทึก…');
+      setSaveStatus('saving');
       void saveDraft(draft).then(() => {
-        if (revision.current === current) setSaveStatus('บันทึกในเครื่องแล้ว');
+        if (revision.current === current) setSaveStatus('saved');
       }).catch(() => {
-        if (revision.current === current) setSaveStatus('บันทึกไม่ได้ · กรุณาดาวน์โหลดเก็บไว้');
+        if (revision.current === current) setSaveStatus('saveError');
       });
     }, 350);
     return () => window.clearTimeout(timer);
@@ -78,7 +80,7 @@ export default function App() {
 
   function update(patch: Partial<Draft>) {
     revision.current++;
-    setSaveStatus('กำลังบันทึก…');
+    setSaveStatus('saving');
     setDraft(previous => ({ ...previous, ...patch }));
     setDownload(null);
   }
@@ -86,14 +88,14 @@ export default function App() {
   async function upload(file?: File) {
     if (!file || !ready || exporting) return;
     const current = ++importRevision.current;
-    setBusy(true); setError(''); setDownload(null);
+    setBusy(true); setError(null); setDownload(null);
     try {
       const imported = await importImage(file);
       if (current !== importRevision.current) return;
       setImage(imported.image);
       update({ image: imported.blob, crop: initialCrop, palette: imported.palette, background: imported.palette[0], foreground: null });
     } catch (failure) {
-      if (current === importRevision.current) setError(failure instanceof Error ? failure.message : 'เปิดรูปไม่สำเร็จ กรุณาลองอีกครั้ง');
+      if (current === importRevision.current) setError(errorMessageKey(failure, 'importError'));
     } finally { if (current === importRevision.current) setBusy(false); }
   }
 
@@ -104,7 +106,7 @@ export default function App() {
 
   async function exportPng() {
     if (!image || !timeValid || busy || exporting) return;
-    setExporting(true); setError('');
+    setExporting(true); setError(null);
     const currentDraft = draft;
     try {
       await prepareFonts(currentDraft);
@@ -119,90 +121,91 @@ export default function App() {
       link.href = url; link.download = file.name;
       document.body.appendChild(link); link.click(); link.remove();
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'สร้าง PNG ไม่สำเร็จ กรุณาลองอีกครั้ง');
+      setError(errorMessageKey(failure, 'exportError'));
     } finally { setExporting(false); }
   }
 
   async function sharePng() {
     if (!download) return;
     try { await navigator.share({ files: [download.file] }); }
-    catch (failure) { if (!(failure instanceof DOMException && failure.name === 'AbortError')) setError('แชร์รูปไม่สำเร็จ ใช้ปุ่มดาวน์โหลด PNG ได้เลย'); }
+    catch (failure) { if (!(failure instanceof DOMException && failure.name === 'AbortError')) setError('shareError'); }
   }
 
   return <div className="app-shell">
     <header className="site-header">
       <a className="brand" href="#main" aria-label="still. Wallpaper studio"><span className="brand-mark"><i /><i /></span><span>still<span className="brand-dot">.</span></span></a>
-      <span className="brand-description">A WALLPAPER, A LITTLE MORE YOU.</span>
-      <button className="help-button" onClick={() => setHelp(!help)} aria-expanded={help}><CircleHelp size={17} /><span>วิธีใช้งาน</span></button>
+      <span className="brand-description">{copy.tagline}</span>
+      <div className="language-picker"><label className="sr-only" htmlFor="language">{copy.language}</label><select id="language" value={language} onChange={event => setLanguage(event.target.value as typeof language)}><option value="th" lang="th">ไทย</option><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option></select><ChevronDown size={13} aria-hidden="true" /></div>
+      <button className="help-button" onClick={() => setHelp(!help)} aria-expanded={help}><CircleHelp size={17} /><span>{copy.help}</span></button>
     </header>
 
-    {help && <aside className="help-panel"><button className="icon-button close-help" onClick={() => setHelp(false)} aria-label="ปิดวิธีใช้งาน"><X size={18} /></button>
-      <h2>จากรูปโปรด สู่หน้าจอของคุณ</h2><ol><li>เลือกรุ่น iPhone แล้วอัปโหลดรูป</li><li>ลากรูปในพรีวิวและปรับซูม ใส่ข้อความและเลือกสี</li><li>ดาวน์โหลด PNG แล้วเปิดรูปบน iPhone กดแชร์ → ใช้เป็นภาพพื้นหลัง</li></ol>
-      <p>บน iPhone หากไฟล์อยู่ใน Downloads ให้เปิดไฟล์ กดแชร์ แล้วเลือกบันทึกรูปภาพก่อนตั้งวอลเปเปอร์ นาฬิกาจำลองไม่ติดใน PNG และตำแหน่งจริงขึ้นกับการตั้งค่า iOS</p>
-      <p>งานล่าสุดเก็บเฉพาะเบราว์เซอร์นี้ การล้างข้อมูลเว็บไซต์หรือโหมดส่วนตัวอาจทำให้งานหาย</p>
+    {help && <aside className="help-panel"><button className="icon-button close-help" onClick={() => setHelp(false)} aria-label={copy.closeHelp}><X size={18} /></button>
+      <h2>{copy.helpTitle}</h2><ol><li>{copy.helpStep1}</li><li>{copy.helpStep2}</li><li>{copy.helpStep3}</li></ol>
+      <p>{copy.helpPhotos}</p>
+      <p>{copy.helpStorage}</p>
     </aside>}
 
     <main id="main" className="studio">
       <div className="workspace">
-        <div className="workspace-heading"><div><span className="eyebrow">YOUR PERSONAL WALLPAPER STUDIO</span><h1>รูปของคุณ <span>เพลงของคุณ</span></h1><p>เก็บความรู้สึกดี ๆ ไว้บนหน้าจอ</p></div><span className="template-badge"><Music2 size={13} /> THE MUSIC PLAYER <span>01</span></span></div>
-        <div className="preview-toolbar" id="preview"><span className="preview-label"><span className="live-dot" /> ภาพตัวอย่าง</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
+        <div className="workspace-heading"><div><span className="eyebrow">{copy.studio}</span><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div><span className="template-badge"><Music2 size={13} /> THE MUSIC PLAYER <span>01</span></span></div>
+        <div className="preview-toolbar" id="preview"><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
         <div className="preview-stage">
-          <div className="side-note">MADE OF YOUR FAVORITE THINGS</div>
-          <div className="preview-wrap"><Preview draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
-          <div className="stage-caption"><span>01 / MUSIC PLAYER</span><span>MAKE IT YOURS.</span></div>
+          <div className="side-note">{copy.sideNote}</div>
+          <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
+          <div className="stage-caption"><span>01 / {copy.template}</span><span>{copy.makeYours}</span></div>
         </div>
-        <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> จำลอง Lock Screen</Toggle><span>นาฬิกาและวิดเจ็ตไม่ติดในไฟล์ PNG</span></div>
-        <p className="privacy-note"><ShieldCheck size={13} /> รูปของคุณอยู่บนเครื่องของคุณเสมอ</p>
+        <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> {copy.guides}</Toggle><span>{copy.guidesNote}</span></div>
+        <p className="privacy-note"><ShieldCheck size={13} /> {copy.privacy}</p>
       </div>
 
-      <aside className="inspector" aria-label="เครื่องมือแต่งวอลเปเปอร์">
-        <div className="inspector-heading"><div><span className="eyebrow">LET’S MAKE IT PERSONAL</span><h2>แต่งวอลเปเปอร์</h2></div><span className="tiny-music"><Music2 size={20} /></span></div>
-        <div className="save-status" role="status"><CheckCheck size={13} />{saveStatus}</div>
+      <aside className="inspector" aria-label={copy.editorLabel}>
+        <div className="inspector-heading"><div><span className="eyebrow">{copy.personal}</span><h2>{copy.editor}</h2></div><span className="tiny-music"><Music2 size={20} /></span></div>
+        <div className="save-status" role="status"><CheckCheck size={13} />{copy[saveStatus]}</div>
         <fieldset disabled={!ready || busy || exporting} className="editor-fields">
-          <Section number="01" title="หน้าจอของคุณ">
-            <label className="sr-only" htmlFor="device">รุ่น iPhone</label>
+          <Section number="01" title={copy.screen}>
+            <label className="sr-only" htmlFor="device">{copy.device}</label>
             <div className="select-wrap"><Smartphone size={16} /><select id="device" value={device.name} onChange={event => update({ device: event.target.value })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
-            <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">ขนาดจาก Apple <ArrowUpRight size={11} /></a></div>
+            <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div>
           </Section>
 
-          <Section number="02" title="รูปโปรดของคุณ" extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>ลบรูป</button>}>
-            <input ref={uploadRef} className="sr-only" id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={chooseFile} tabIndex={-1} />
+          <Section number="02" title={copy.photo} extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>{copy.removePhoto}</button>}>
+            <input ref={uploadRef} className="sr-only" id="photo-upload" aria-label={copy.uploadPhoto} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={chooseFile} tabIndex={-1} />
             <button className={`upload-zone ${dragOver ? 'drag-over' : ''} ${image ? 'with-image' : ''}`} onClick={() => uploadRef.current?.click()}
               onDragOver={event => { event.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
               onDrop={event => { event.preventDefault(); setDragOver(false); void upload(event.dataTransfer.files[0]); }}>
               {busy ? <LoaderCircle className="spin" size={24} /> : <ImagePlus size={25} strokeWidth={1.4} />}
-              <strong>{busy ? 'กำลังเตรียมรูป…' : image ? 'เปลี่ยนรูปภาพ' : 'เลือกหรือลากรูปมาวาง'}</strong><span>JPG, PNG, WebP · สูงสุด 30 MB</span>
+              <strong>{busy ? copy.preparingPhoto : image ? copy.changePhoto : copy.choosePhoto}</strong><span>{copy.fileTypes}</span>
             </button>
-            {image && <div className="crop-controls"><div className="zoom-heading"><label htmlFor="zoom">ซูมรูป</label><span>{draft.crop.zoom.toFixed(2)}×</span><button className="text-button" onClick={() => update({ crop: initialCrop })}><RotateCcw size={12} /> จัดกึ่งกลาง</button></div><div className="range-row"><Minus size={13} /><input id="zoom" type="range" min="1" max="4" step="0.01" value={draft.crop.zoom} onChange={event => update({ crop: { ...draft.crop, zoom: Number(event.target.value) } })} /><Plus size={13} /></div><p className="field-hint">ลากรูปในภาพตัวอย่างเพื่อจัดตำแหน่ง</p></div>}
+            {image && <div className="crop-controls"><div className="zoom-heading"><label htmlFor="zoom">{copy.zoom}</label><span>{draft.crop.zoom.toFixed(2)}×</span><button className="text-button" onClick={() => update({ crop: initialCrop })}><RotateCcw size={12} /> {copy.center}</button></div><div className="range-row"><Minus size={13} /><input id="zoom" type="range" min="1" max="4" step="0.01" value={draft.crop.zoom} onChange={event => update({ crop: { ...draft.crop, zoom: Number(event.target.value) } })} /><Plus size={13} /></div><p className="field-hint">{copy.cropHint}</p></div>}
           </Section>
 
-          <Section number="03" title="เพลงที่เป็นคุณ">
-            <label className="field-label" htmlFor="title">ชื่อเพลง / ข้อความ</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder="เพลงโปรดของคุณ" />
-            <label className="field-label" htmlFor="artist">ศิลปิน</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder="ชื่อศิลปิน หรือใครสักคน" />
-            <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">เวลาปัจจุบัน</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">ความยาวเพลง</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
-            {!timeValid && <p id="time-error" className="field-error">ใช้รูปแบบนาที:วินาที เช่น 0:42 โดยเวลาปัจจุบันไม่เกินความยาวเพลง และความยาวต้องมากกว่า 0:00</p>}
+          <Section number="03" title={copy.music}>
+            <label className="field-label" htmlFor="title">{copy.title}</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder={copy.titlePlaceholder} />
+            <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
+            <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
+            {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
           </Section>
 
-          <Section number="04" title="สีและบรรยากาศ" extra={<span className="mini-label">{image ? 'สีจากรูปของคุณ' : 'PALETTE'}</span>}>
-            <div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`เลือกสีพื้นหลัง ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
-            <div className="color-row"><label htmlFor="background">สีพื้นหลัง</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
-            <div className="color-row"><label htmlFor="foreground">ข้อความและไอคอน</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>อัตโนมัติ</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div>
-            <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>แสดง Color Palette</Toggle>
+          <Section number="04" title={copy.colors} extra={<span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
+            <div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
+            <div className="color-row"><label htmlFor="background">{copy.background}</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
+            <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div>
+            <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>
           </Section>
 
-          <Section number="05" title="ลายเซ็นของคุณ">
-            <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>แสดงเครดิตด้านล่าง</Toggle>
-            {draft.showCredit && <><label className="sr-only" htmlFor="credit">ข้อความเครดิต</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder="@yourname หรือข้อความสั้น ๆ" /></>}
+          <Section number="05" title={copy.signature}>
+            <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
+            {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
           </Section>
         </fieldset>
         <div className="export-area">
-          {error && <div className="error-message" role="alert">{error}<button className="icon-button" aria-label="ปิดข้อความผิดพลาด" onClick={() => setError('')}><X size={15} /></button></div>}
-          {download && <div className="download-result" role="status"><strong><Check size={15} /> PNG พร้อมแล้ว</strong><p>หากดาวน์โหลดไม่เริ่ม <a href={download.url} download={download.file.name}>กดบันทึกอีกครั้ง</a></p>{navigator.canShare?.({ files: [download.file] }) && <button className="share-button" onClick={() => void sharePng()}><Share2 size={15} /> แชร์ / บันทึกรูปภาพ</button>}</div>}
-          <div className="export-actions"><a className="jump-preview" href="#preview">ดูตัวอย่าง</a><button className="export-button" disabled={!ready || !image || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? 'กำลังสร้างวอลเปเปอร์…' : 'ดาวน์โหลด PNG'}<span>↗</span></button></div>
-          <p className="export-note">{!image ? 'เลือกรูปโปรดของคุณเพื่อเริ่มต้น' : `${device.width} × ${device.height} px · ไม่มีลายน้ำ`}</p>
+          {error && <div className="error-message" role="alert">{copy[error]}<button className="icon-button" aria-label={copy.dismissError} onClick={() => setError(null)}><X size={15} /></button></div>}
+          {download && <div className="download-result" role="status"><strong><Check size={15} /> {copy.pngReady}</strong><p>{copy.downloadRetry} <a href={download.url} download={download.file.name}>{copy.saveAgain}</a></p>{navigator.canShare?.({ files: [download.file] }) && <button className="share-button" onClick={() => void sharePng()}><Share2 size={15} /> {copy.share}</button>}</div>}
+          <div className="export-actions"><a className="jump-preview" href="#preview">{copy.viewPreview}</a><button className="export-button" disabled={!ready || !image || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}<span>↗</span></button></div>
+          <p className="export-note">{!image ? copy.startHint : `${device.width} × ${device.height} px · ${copy.noWatermark}`}</p>
         </div>
       </aside>
     </main>
-    <footer className="site-footer"><span>still. <span>Little moments. Yours to keep.</span></span><span>สร้างด้วยรูปของคุณ และความรู้สึกของคุณ</span></footer>
+    <footer className="site-footer"><span>still. <span>{copy.footer}</span></span><span>{copy.footerNote}</span></footer>
   </div>;
 }
