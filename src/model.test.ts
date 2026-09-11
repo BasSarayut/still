@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { automaticForeground, cropRect, initialCrop, initialDraft, parseTime, progress, restoreDraft, validTimes } from './model';
+import { automaticForeground, cropRect, darkenForContrast, darkestColors, initialCrop, initialDraft, luminance, mixWithBlack, parseTime, progress, remaining, restoreDraft, validTimes } from './model';
 import { devices } from './devices';
 import { composition } from './renderer';
 
@@ -37,6 +37,13 @@ describe('playback time', () => {
     expect(validTimes('4:18', '4:18')).toBe(true);
     expect(progress('0:42', '4:18')).toBeCloseTo(42 / 258);
   });
+  it('shows time remaining as a negative countdown, like Apple Music', () => {
+    expect(remaining('0:16', '3:38')).toBe('-3:22');
+    expect(remaining('4:18', '4:18')).toBe('-0:00');
+    expect(remaining('0:00', '0:59')).toBe('-0:59');
+    expect(remaining('1:1', '4:18')).toBe('');
+    expect(remaining('0:42', '')).toBe('');
+  });
 });
 
 describe('colors and saved drafts', () => {
@@ -53,5 +60,30 @@ describe('colors and saved drafts', () => {
     expect(draft.background).toBe(initialDraft.background);
     expect(draft.palette).toEqual(initialDraft.palette);
     expect(draft.crop).toEqual({ zoom: 4, x: 0, y: 1 });
+  });
+  it('defaults drafts saved before templates existed to the custom template, keeping old work unchanged', () => {
+    expect(restoreDraft({ version: 1 }).templateId).toBe('custom');
+    expect(restoreDraft({ version: 1, templateId: 'not-a-template' }).templateId).toBe('custom');
+    expect(restoreDraft({ version: 1, templateId: 'nowPlaying' }).templateId).toBe('nowPlaying');
+  });
+});
+
+describe('nowPlaying template colors', () => {
+  it('picks the two darkest palette colors, darkest first', () => {
+    const palette = ['#dbded6', '#52656a', '#f3f1ec', '#8eaaa9', '#b7c9c6'];
+    expect(darkestColors(palette)).toEqual(['#52656a', '#8eaaa9']);
+    expect(darkestColors(['#123456'])).toEqual(['#123456', '#123456']);
+  });
+  it('mixes a color toward black without ever brightening it', () => {
+    expect(mixWithBlack('#ffffff', 0)).toBe('#ffffff');
+    expect(mixWithBlack('#ffffff', 1)).toBe('#000000');
+    expect(mixWithBlack('#ffffff', 0.5)).toBe('#808080');
+    expect(mixWithBlack('#8eaaa9', 2)).toBe('#000000');
+  });
+  it('darkens even a pale, near-white palette color enough to guarantee contrast with fixed light text', () => {
+    expect(luminance(darkenForContrast('#ffffff', 0.035))).toBeLessThanOrEqual(0.035);
+    expect(luminance(darkenForContrast('#f3f1ec', 0.09))).toBeLessThanOrEqual(0.09);
+    // Already-dark colors are left alone rather than darkened further than necessary.
+    expect(darkenForContrast('#101010', 0.09)).toBe('#101010');
   });
 });

@@ -1,6 +1,8 @@
 export type Crop = { zoom: number; x: number; y: number };
+export type TemplateId = 'custom' | 'nowPlaying';
 export type Draft = {
   version: 1;
+  templateId: TemplateId;
   device: string;
   title: string;
   artist: string;
@@ -19,12 +21,17 @@ export type Draft = {
 
 export const initialCrop: Crop = { zoom: 1, x: 0.5, y: 0.5 };
 export const initialDraft: Draft = {
-  version: 1, device: 'iPhone 16', title: 'เพลงโปรดของคุณ', artist: 'Your favorite artist',
+  version: 1, templateId: 'custom', device: 'iPhone 16', title: 'เพลงโปรดของคุณ', artist: 'Your favorite artist',
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
   showGuides: true, background: '#f3f1ec', foreground: null,
   palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
   crop: initialCrop, image: null,
 };
+
+// Fixed light/dark text colors used whenever a template needs guaranteed contrast
+// instead of a user-chosen foreground (see automaticForeground and the nowPlaying template).
+export const lightText = '#faf9f6';
+export const darkText = '#232927';
 
 export function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
@@ -46,6 +53,17 @@ export function progress(elapsed: string, duration: string) {
   return clamp((parseTime(elapsed) ?? 0) / Math.max(1, parseTime(duration) ?? 1));
 }
 
+// Apple Music shows time remaining (a negative countdown) instead of the song's total length.
+export function remaining(elapsed: string, duration: string): string {
+  const current = parseTime(elapsed);
+  const total = parseTime(duration);
+  if (current === null || total === null) return '';
+  const left = Math.max(0, total - current);
+  const minutes = Math.floor(left / 60);
+  const seconds = left % 60;
+  return `-${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 export function luminance(hex: string) {
   const channels = [1, 3, 5].map(start => {
     const channel = parseInt(hex.slice(start, start + 2), 16) / 255;
@@ -55,10 +73,34 @@ export function luminance(hex: string) {
 }
 
 export function automaticForeground(background: string) {
-  const light = '#faf9f6';
-  const dark = '#232927';
   const backdrop = luminance(background);
-  return (luminance(light) + 0.05) / (backdrop + 0.05) > (backdrop + 0.05) / (luminance(dark) + 0.05) ? light : dark;
+  return (luminance(lightText) + 0.05) / (backdrop + 0.05) > (backdrop + 0.05) / (luminance(darkText) + 0.05) ? lightText : darkText;
+}
+
+// Two darkest colors of the extracted palette, used as the nowPlaying gradient's base tones.
+export function darkestColors(palette: string[]): [string, string] {
+  const sorted = [...palette].sort((a, b) => luminance(a) - luminance(b));
+  const first = sorted[0] ?? darkText;
+  return [first, sorted[1] ?? first];
+}
+
+// Mixes a hex color toward black by `amount` (0–1).
+export function mixWithBlack(hex: string, amount: number) {
+  const portion = clamp(amount);
+  const channels = [1, 3, 5].map(start => Math.round(parseInt(hex.slice(start, start + 2), 16) * (1 - portion)));
+  return `#${channels.map(value => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// Darkens a color until its luminance is at or below `maxLuminance`, guaranteeing enough contrast
+// for fixed light text regardless of how bright the source photo (and its palette) started out.
+export function darkenForContrast(hex: string, maxLuminance: number) {
+  let portion = 0;
+  let result = hex;
+  while (luminance(result) > maxLuminance && portion < 1) {
+    portion = Math.min(1, portion + 0.05);
+    result = mixWithBlack(hex, portion);
+  }
+  return result;
 }
 
 export function cropRect(width: number, height: number, crop: Crop) {
@@ -70,6 +112,7 @@ export function restoreDraft(value: unknown): Draft {
   if (!value || typeof value !== 'object' || !('version' in value) || value.version !== 1) return initialDraft;
   const saved = value as Partial<Draft>;
   const restored = { ...initialDraft };
+  restored.templateId = saved.templateId === 'nowPlaying' ? 'nowPlaying' : 'custom';
   for (const key of ['device', 'title', 'artist', 'elapsed', 'duration', 'credit'] as const) {
     if (typeof saved[key] === 'string') restored[key] = saved[key].slice(0, 180);
   }

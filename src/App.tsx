@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { ArrowDownToLine, ArrowUpRight, Check, CheckCheck, ChevronDown, CircleHelp, ImagePlus, LoaderCircle, LockKeyhole, Minus, Music2, Plus, RotateCcw, Share2, ShieldCheck, Smartphone, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, Check, CheckCheck, ChevronDown, CircleHelp, ImagePlus, LayoutTemplate, LoaderCircle, LockKeyhole, Minus, Music2, Plus, RotateCcw, Share2, ShieldCheck, Smartphone, X } from 'lucide-react';
 import { devices, getDevice } from './devices';
-import { automaticForeground, initialCrop, initialDraft, validTimes, type Draft } from './model';
+import { automaticForeground, initialCrop, initialDraft, validTimes, type Draft, type TemplateId } from './model';
 import { canvasBlob, decodeImage, importImage } from './images';
 import { loadDraft, saveDraft } from './storage';
 import { prepareFonts, renderWallpaper } from './renderer';
@@ -15,6 +15,11 @@ function Toggle({ checked, onChange, children, disabled = false }: { checked: bo
 function Section({ number, title, children, extra }: { number: string; title: string; children: ReactNode; extra?: ReactNode }) {
   return <section className="control-section"><div className="section-heading"><h2><span>{number}</span>{title}</h2>{extra}</div>{children}</section>;
 }
+
+const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templateNowPlaying' }[] = [
+  { id: 'custom', number: '01', badge: 'THE MUSIC PLAYER', labelKey: 'template' },
+  { id: 'nowPlaying', number: '02', badge: 'NOW PLAYING', labelKey: 'templateNowPlaying' },
+];
 
 export default function App() {
   const { language, setLanguage, copy } = useLanguage();
@@ -35,6 +40,7 @@ export default function App() {
   const device = getDevice(draft.device);
   const timeValid = validTimes(draft.elapsed, draft.duration);
   const foreground = draft.foreground ?? automaticForeground(draft.background);
+  const template = TEMPLATES.find(item => item.id === draft.templateId) ?? TEMPLATES[0];
   latest.current = draft;
 
   useEffect(() => {
@@ -147,12 +153,12 @@ export default function App() {
 
     <main id="main" className="studio">
       <div className="workspace">
-        <div className="workspace-heading"><div><span className="eyebrow">{copy.studio}</span><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div><span className="template-badge"><Music2 size={13} /> THE MUSIC PLAYER <span>01</span></span></div>
+        <div className="workspace-heading"><div><span className="eyebrow">{copy.studio}</span><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div><span className="template-badge"><Music2 size={13} /> {template.badge} <span>{template.number}</span></span></div>
         <div className="preview-toolbar" id="preview"><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
         <div className="preview-stage">
           <div className="side-note">{copy.sideNote}</div>
           <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
-          <div className="stage-caption"><span>01 / {copy.template}</span><span>{copy.makeYours}</span></div>
+          <div className="stage-caption"><span>{template.number} / {copy[template.labelKey]}</span><span>{copy.makeYours}</span></div>
         </div>
         <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> {copy.guides}</Toggle><span>{copy.guidesNote}</span></div>
         <p className="privacy-note"><ShieldCheck size={13} /> {copy.privacy}</p>
@@ -162,13 +168,18 @@ export default function App() {
         <div className="inspector-heading"><div><span className="eyebrow">{copy.personal}</span><h2>{copy.editor}</h2></div><span className="tiny-music"><Music2 size={20} /></span></div>
         <div className="save-status" role="status"><CheckCheck size={13} />{copy[saveStatus]}</div>
         <fieldset disabled={!ready || busy || exporting} className="editor-fields">
-          <Section number="01" title={copy.screen}>
+          <Section number="01" title={copy.templateSectionTitle}>
+            <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
+            <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
+          </Section>
+
+          <Section number="02" title={copy.screen}>
             <label className="sr-only" htmlFor="device">{copy.device}</label>
             <div className="select-wrap"><Smartphone size={16} /><select id="device" value={device.name} onChange={event => update({ device: event.target.value })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
             <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div>
           </Section>
 
-          <Section number="02" title={copy.photo} extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>{copy.removePhoto}</button>}>
+          <Section number="03" title={copy.photo} extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>{copy.removePhoto}</button>}>
             <input ref={uploadRef} className="sr-only" id="photo-upload" aria-label={copy.uploadPhoto} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={chooseFile} tabIndex={-1} />
             <button className={`upload-zone ${dragOver ? 'drag-over' : ''} ${image ? 'with-image' : ''}`} onClick={() => uploadRef.current?.click()}
               onDragOver={event => { event.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
@@ -179,21 +190,22 @@ export default function App() {
             {image && <div className="crop-controls"><div className="zoom-heading"><label htmlFor="zoom">{copy.zoom}</label><span>{draft.crop.zoom.toFixed(2)}×</span><button className="text-button" onClick={() => update({ crop: initialCrop })}><RotateCcw size={12} /> {copy.center}</button></div><div className="range-row"><Minus size={13} /><input id="zoom" type="range" min="1" max="4" step="0.01" value={draft.crop.zoom} onChange={event => update({ crop: { ...draft.crop, zoom: Number(event.target.value) } })} /><Plus size={13} /></div><p className="field-hint">{copy.cropHint}</p></div>}
           </Section>
 
-          <Section number="03" title={copy.music}>
+          <Section number="04" title={copy.music}>
             <label className="field-label" htmlFor="title">{copy.title}</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder={copy.titlePlaceholder} />
             <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
             <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
             {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
           </Section>
 
-          <Section number="04" title={copy.colors} extra={<span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
-            <div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
+          <Section number="05" title={copy.colors} extra={draft.templateId === 'custom' && <span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
+            {draft.templateId === 'custom' && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
             <div className="color-row"><label htmlFor="background">{copy.background}</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
-            <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div>
+            <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div></>}
+            {draft.templateId === 'nowPlaying' && <p className="field-hint">{copy.colorsAutoHint}</p>}
             <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>
           </Section>
 
-          <Section number="05" title={copy.signature}>
+          <Section number="06" title={copy.signature}>
             <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
             {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
           </Section>
