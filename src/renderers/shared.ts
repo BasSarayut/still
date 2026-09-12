@@ -18,6 +18,13 @@ export async function prepareFonts(draft: Draft) {
     fonts.push(document.fonts.load(`${draft.player.titleWeight} ${draft.player.titleSize}px ${coverFonts[draft.player.titleFont]}`, draft.title));
     fonts.push(document.fonts.load(`${draft.player.artistWeight} ${draft.player.artistSize}px ${coverFonts[draft.player.artistFont]}`, draft.artist));
   }
+  if (draft.templateId === 'polaroid') {
+    for (const kind of ['title', 'artist'] as const) {
+      const settings = draft.polaroid;
+      fonts.push(document.fonts.load(`${settings[`${kind}Italic`] ? 'italic ' : ''}${settings[`${kind}Weight`]} ${settings[`${kind}Size`]}px ${coverFonts[settings[`${kind}Font`]]}`, draft[kind]));
+    }
+    if (draft.polaroid.showStamp && draft.polaroid.stamp) fonts.push(document.fonts.load(`10px ${coverFonts.mono}`, draft.polaroid.stamp));
+  }
   await Promise.all(fonts);
   await document.fonts.ready;
 }

@@ -3,6 +3,13 @@ import { useEffect, useState } from 'react';
 export type Language = 'th' | 'en' | 'ja';
 
 const th = {
+  polaroidPresetHint: 'เลือกสไตล์กระดาษ แล้วปรับต่อได้ รูป ข้อความ วันที่ และสีพื้นหลังที่เลือกจะยังอยู่',
+  polaroidClassicHint: 'กรอบคลาสสิก · เครื่องเล่นเพลง', polaroidCleanHint: 'เรียบโปร่ง · ข้อความกึ่งกลาง', polaroidDiaryHint: 'กระดาษครีม · เทปและโน้ต', polaroidCinemaHint: 'ภาพกว้าง · คำบรรยาย', polaroidNoirHint: 'กระดาษเข้ม · ภาพแนวตั้ง',
+  polaroidFrame: 'กรอบกระดาษและการจัดวาง', polaroidPhotoFormat: 'สัดส่วนรูป', polaroidSquare: 'จัตุรัส · 1:1', polaroidPortrait: 'แนวตั้ง · 3:4', polaroidLandscape: 'แนวนอน · 16:9',
+  polaroidPadding: 'ความหนาขอบกระดาษ', polaroidCaptionHeight: 'พื้นที่ข้อความขั้นต่ำ', polaroidRadius: 'ความโค้งมุมกระดาษ', polaroidRotation: 'เอียงการ์ด', polaroidPosition: 'ตำแหน่งการ์ด',
+  polaroidPaper: 'สีกระดาษ', polaroidInk: 'สีหมึกบนกระดาษ', polaroidLayoutHint: 'ระบบปรับขนาดและตำแหน่งให้การ์ดอยู่ในภาพ และขยายพื้นที่ข้อความเมื่อจำเป็น',
+  polaroidDecorations: 'เทป โน้ต และรายละเอียด', polaroidTape: 'เทปตกแต่ง', polaroidTapeTop: 'แถบด้านบน', polaroidTapeCorners: 'มุมบนสองข้าง', polaroidTapeColor: 'สีเทป',
+  polaroidPattern: 'ลายพื้นหลัง', polaroidGrid: 'ตาราง', polaroidShowStamp: 'แสดงวันที่ / โน้ต', polaroidStamp: 'ข้อความวันที่ / โน้ต', polaroidStampPlaceholder: '2026.09.12 · ความทรงจำของเรา',
   siteTitle: 'สตูดิโอวอลเปเปอร์และปกอัลบั้ม',
   siteDescription: 'สร้างวอลเปเปอร์และปกอัลบั้มจากรูปของคุณด้วย ill. ปรับแต่งเลย์เอาต์ สี ฟอนต์ และข้อความ ดาวน์โหลด PNG ฟรี ไม่มีลายน้ำ รูปไม่ออกจากเครื่อง',
   language: 'ภาษา', help: 'วิธีใช้งาน', closeHelp: 'ปิดวิธีใช้งาน',
@@ -50,7 +57,7 @@ const th = {
   artist: 'ศิลปิน', artistPlaceholder: 'ชื่อศิลปิน หรือใครสักคน', elapsed: 'เวลาปัจจุบัน', duration: 'ความยาวเพลง',
   timeError: 'ใช้รูปแบบนาที:วินาที เช่น 0:42 โดยเวลาปัจจุบันไม่เกินความยาวเพลง และความยาวต้องมากกว่า 0:00',
   colors: 'สีและบรรยากาศ', extractedColors: 'สีจากรูปของคุณ', palette: 'ชุดสี',
-  colorsPolaroidHint: 'กระดาษโพลารอยด์เป็นสีขาวคงที่เสมอ สีพื้นหลังและข้อความด้านล่างนี้ใช้กับผนังด้านหลังการ์ดเท่านั้น',
+  colorsPolaroidHint: 'สีส่วนนี้ใช้กับพื้นหลังและข้อความนอกการ์ด ปรับสีกระดาษและหมึกได้ใน “กรอบกระดาษและการจัดวาง”',
   showProgress: 'แสดงแถบเวลาเพลง', showPauseGlyph: 'แสดงไอคอนเล่น/หยุด',
   chooseBackground: 'เลือกสีพื้นหลัง', background: 'สีพื้นหลัง', foreground: 'ข้อความและไอคอน',
   automatic: 'อัตโนมัติ', showPalette: 'แสดง Color Palette', signature: 'ลายเซ็นของคุณ',
@@ -70,6 +77,13 @@ export type MessageKey = keyof typeof th;
 export type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
+  polaroidPresetHint: 'Choose a paper style, then make it yours. Your photo, text, date, and chosen background color stay with you.',
+  polaroidClassicHint: 'Classic frame · music player', polaroidCleanHint: 'Airy · centered caption', polaroidDiaryHint: 'Cream paper · tape & notes', polaroidCinemaHint: 'Wide photo · subtitles', polaroidNoirHint: 'Dark paper · portrait',
+  polaroidFrame: 'Paper frame & layout', polaroidPhotoFormat: 'Photo aspect ratio', polaroidSquare: 'Square · 1:1', polaroidPortrait: 'Portrait · 3:4', polaroidLandscape: 'Landscape · 16:9',
+  polaroidPadding: 'Paper border width', polaroidCaptionHeight: 'Minimum caption area', polaroidRadius: 'Paper corner radius', polaroidRotation: 'Card rotation', polaroidPosition: 'Card position',
+  polaroidPaper: 'Paper color', polaroidInk: 'Paper ink color', polaroidLayoutHint: 'The card scales and moves to fit the canvas. The caption area grows when your settings need more room.',
+  polaroidDecorations: 'Tape, notes & details', polaroidTape: 'Decorative tape', polaroidTapeTop: 'Top strip', polaroidTapeCorners: 'Both top corners', polaroidTapeColor: 'Tape color',
+  polaroidPattern: 'Background pattern', polaroidGrid: 'Grid', polaroidShowStamp: 'Show date / note', polaroidStamp: 'Date / note text', polaroidStampPlaceholder: '2026.09.12 · Our little memory',
   siteTitle: 'Wallpaper & album cover studio',
   siteDescription: 'Create wallpapers and album covers from your photos with ill. Customize layouts, colors, fonts, and text. Download free PNGs without watermarks. Your photos stay on your device.',
   language: 'Language', help: 'How to use', closeHelp: 'Close help',
@@ -117,7 +131,7 @@ const en: Messages = {
   artist: 'Artist', artistPlaceholder: 'An artist, or someone special', elapsed: 'Current time', duration: 'Song duration',
   timeError: 'Use minutes:seconds, such as 0:42. Current time cannot exceed the duration, and duration must be greater than 0:00.',
   colors: 'Colors & mood', extractedColors: 'From your photo', palette: 'Palette',
-  colorsPolaroidHint: 'The Polaroid paper is always fixed white — the background and text colors below only apply to the wall behind the card.',
+  colorsPolaroidHint: 'These colors apply to the background and text outside the card. Change paper and ink colors in “Paper frame & layout”.',
   showProgress: 'Show progress bar', showPauseGlyph: 'Show pause icon',
   chooseBackground: 'Choose background color', background: 'Background', foreground: 'Text & icons',
   automatic: 'Auto', showPalette: 'Show color palette', signature: 'Your signature',
@@ -134,6 +148,13 @@ const en: Messages = {
 };
 
 const ja: Messages = {
+  polaroidPresetHint: '紙のスタイルを選んで、自由に調整。写真、文字、日付、選択した背景色はそのまま残ります。',
+  polaroidClassicHint: '定番のフレーム・音楽', polaroidCleanHint: '余白・中央揃え', polaroidDiaryHint: 'クリーム色・テープとメモ', polaroidCinemaHint: '横長の写真・字幕', polaroidNoirHint: 'ダークな台紙・縦長',
+  polaroidFrame: '台紙とレイアウト', polaroidPhotoFormat: '写真の縦横比', polaroidSquare: '正方形・1:1', polaroidPortrait: '縦長・3:4', polaroidLandscape: '横長・16:9',
+  polaroidPadding: '台紙の余白', polaroidCaptionHeight: 'キャプションの最小高さ', polaroidRadius: '台紙の角丸', polaroidRotation: 'カードの傾き', polaroidPosition: 'カードの位置',
+  polaroidPaper: '台紙の色', polaroidInk: '台紙上の文字色', polaroidLayoutHint: 'カードが収まるように大きさと位置を調整します。文字の設定に応じてキャプションの領域が広がります。',
+  polaroidDecorations: 'テープ・メモ・詳細', polaroidTape: '飾りテープ', polaroidTapeTop: '上部に1枚', polaroidTapeCorners: '上部の両隅', polaroidTapeColor: 'テープの色',
+  polaroidPattern: '背景の模様', polaroidGrid: '方眼', polaroidShowStamp: '日付・メモを表示', polaroidStamp: '日付・メモの文字', polaroidStampPlaceholder: '2026.09.12 · ふたりの思い出',
   siteTitle: '壁紙・アルバムカバー制作スタジオ',
   siteDescription: 'ill. でお気に入りの写真から壁紙やアルバムカバーを作成。レイアウト、色、フォント、文字を自由に調整し、透かしなしのPNGを無料でダウンロード。写真は端末内だけで処理されます。',
   language: '言語', help: '使い方', closeHelp: '使い方を閉じる',
@@ -181,7 +202,7 @@ const ja: Messages = {
   artist: 'アーティスト', artistPlaceholder: 'アーティストや大切な人の名前', elapsed: '再生位置', duration: '曲の長さ',
   timeError: '0:42のように「分:秒」で入力してください。再生位置は曲の長さ以内、曲の長さは0:00より長くしてください。',
   colors: '色と雰囲気', extractedColors: '写真から抽出した色', palette: 'パレット',
-  colorsPolaroidHint: 'ポラロイドの台紙は常に白色で固定されています。背景色と文字色はカードの背後の壁にのみ適用されます。',
+  colorsPolaroidHint: 'この色は背景とカードの外側の文字に適用されます。台紙とその文字色は「台紙とレイアウト」で調整できます。',
   showProgress: '再生バーを表示', showPauseGlyph: '一時停止アイコンを表示',
   chooseBackground: '背景色を選択', background: '背景色', foreground: '文字とアイコン',
   automatic: '自動', showPalette: 'カラーパレットを表示', signature: 'あなたのサイン',

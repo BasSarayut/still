@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Polaroid template keeps manual colors editable, keeps its paper fixed white, and renders correctly on the smallest-margin device', async ({ page }) => {
+test('Polaroid keeps wall colors independent from the default paper and fits the smallest-margin device', async ({ page }) => {
   const errors: string[] = [];
   const externalRequests: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -23,7 +23,7 @@ test('Polaroid template keeps manual colors editable, keeps its paper fixed whit
   // Unlike Now Playing, colors stay manually editable — the customization the Polaroid template adds.
   await expect(page.locator('#background')).toBeVisible();
   await expect(page.locator('.swatches')).toBeVisible();
-  await expect(page.getByText('กระดาษโพลารอยด์เป็นสีขาวคงที่เสมอ')).toBeVisible();
+  await expect(page.getByText('สีส่วนนี้ใช้กับพื้นหลังและข้อความนอกการ์ด', { exact: false })).toBeVisible();
 
   // Smallest vertical margin in the device lineup — confirms the card + caption fit without overflow.
   await page.getByLabel('รุ่น iPhone', { exact: true }).selectOption('iPhone 12 mini');

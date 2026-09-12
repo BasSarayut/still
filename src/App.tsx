@@ -8,6 +8,7 @@ import { prepareFonts, renderWallpaper } from './renderer';
 import Preview from './Preview';
 import AlbumCoverEditor from './AlbumCoverEditor';
 import PlayerEditor, { PlayerBackground, PlayerPresets } from './PlayerEditor';
+import PolaroidEditor, { PolaroidPresets } from './PolaroidEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
@@ -42,10 +43,11 @@ export default function App() {
   const importRevision = useRef(0);
   const isCover = draft.templateId === 'albumCover';
   const isPlayer = draft.templateId === 'custom';
+  const isPolaroid = draft.templateId === 'polaroid';
   const autoBackground = isPlayer && draft.player.backgroundMode === 'photo';
   const isSquare = isCover && draft.albumCover.format === 'square';
   const device = isSquare ? { name: 'album-cover', width: 2400, height: 2400, source: '' } : getDevice(draft.device);
-  const timeValid = isCover || (isPlayer && !draft.player.showProgress) || validTimes(draft.elapsed, draft.duration);
+  const timeValid = isCover || (isPlayer && !draft.player.showProgress) || (isPolaroid && !draft.polaroid.showProgress) || validTimes(draft.elapsed, draft.duration);
   const foreground = isPlayer ? playerColors(draft).foreground : draft.foreground ?? automaticForeground(draft.background);
   const customForeground = isPlayer ? draft.player.foreground : draft.foreground;
   const updateForeground = (foreground: string | null) => update(isPlayer ? { player: { ...draft.player, foreground } } : { foreground });
@@ -181,6 +183,7 @@ export default function App() {
             <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
             <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
             {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
+            {isPolaroid && <PolaroidPresets value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
           </Section>
 
           <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
@@ -210,8 +213,9 @@ export default function App() {
             <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
             <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
             {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
-            {draft.templateId === 'polaroid' && <><Toggle checked={draft.showProgress} onChange={showProgress => update({ showProgress })}>{copy.showProgress}</Toggle>
-            <Toggle checked={draft.showPauseGlyph} onChange={showPauseGlyph => update({ showPauseGlyph })}>{copy.showPauseGlyph}</Toggle></>}
+            {isPolaroid && <><Toggle checked={draft.polaroid.showProgress} onChange={showProgress => update({ polaroid: { ...draft.polaroid, showProgress } })}>{copy.showProgress}</Toggle>
+            <Toggle checked={draft.polaroid.showPauseGlyph} onChange={showPauseGlyph => update({ polaroid: { ...draft.polaroid, showPauseGlyph } })}>{copy.showPauseGlyph}</Toggle>
+            <PolaroidEditor value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} /></>}
             {isPlayer && <PlayerEditor value={draft.player} copy={copy} ink={foreground} onChange={player => update({ player })} />}
           </Section>}
 

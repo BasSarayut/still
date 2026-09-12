@@ -1,5 +1,6 @@
 import { createAlbumCover, restoreAlbumCover, type AlbumCover } from './albumCover';
 import { createPlayerSettings, restorePlayerSettings, type PlayerSettings } from './musicPlayer';
+import { createPolaroidSettings, restorePolaroidSettings, type PolaroidSettings } from './polaroid';
 
 export type Crop = { zoom: number; x: number; y: number };
 export type TemplateId = 'custom' | 'polaroid' | 'albumCover';
@@ -24,6 +25,7 @@ export type Draft = {
   image: Blob | null;
   albumCover: AlbumCover;
   player: PlayerSettings;
+  polaroid: PolaroidSettings;
 };
 
 export const initialCrop: Crop = { zoom: 1, x: 0.5, y: 0.5 };
@@ -32,7 +34,7 @@ export const initialDraft: Draft = {
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
   showGuides: true, showProgress: true, showPauseGlyph: true, background: '#f3f1ec', foreground: null,
   palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
-  crop: initialCrop, image: null, albumCover: createAlbumCover(), player: createPlayerSettings(),
+  crop: initialCrop, image: null, albumCover: createAlbumCover(), player: createPlayerSettings(), polaroid: createPolaroidSettings(),
 };
 
 // Fixed light/dark text colors used whenever a template needs guaranteed contrast
@@ -133,6 +135,10 @@ export function restoreDraft(value: unknown): Draft {
   restored.templateId = saved.templateId === 'polaroid' || saved.templateId === 'albumCover' ? saved.templateId : 'custom';
   restored.player = restorePlayerSettings(saved.player, legacyDark ? 'dark' : 'classic');
   restored.albumCover = restoreAlbumCover(saved.albumCover);
+  restored.polaroid = restorePolaroidSettings(saved.polaroid);
+  if (!saved.polaroid) {
+    for (const key of ['showProgress', 'showPauseGlyph'] as const) if (typeof saved[key] === 'boolean') restored.polaroid[key] = saved[key];
+  }
   for (const key of ['device', 'title', 'artist', 'elapsed', 'duration', 'credit'] as const) {
     if (typeof saved[key] === 'string') restored[key] = saved[key].slice(0, 180);
   }

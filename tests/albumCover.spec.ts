@@ -80,6 +80,7 @@ test('album cover edits, crops, exports and restores in square and phone formats
   await page.locator('.workspace').screenshot({ path: testInfo.outputPath('album-cover-preview.png') });
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download PNG' }).click(); await download;
+  await expect(page.locator('.download-result a')).toBeVisible();
   const exported = await page.evaluate(async () => {
     const image = new Image(); image.src = document.querySelector<HTMLAnchorElement>('.download-result a')!.href; await image.decode();
     const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
@@ -95,6 +96,7 @@ test('album cover edits, crops, exports and restores in square and phone formats
   await expect(page.locator('.lock-guides')).toHaveCount(1);
   const phoneDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download PNG' }).click(); await phoneDownload;
+  await expect(page.locator('.download-result a')).toBeVisible();
   expect(await page.evaluate(async () => {
     const image = new Image(); image.src = document.querySelector<HTMLAnchorElement>('.download-result a')!.href; await image.decode(); return [image.width, image.height];
   })).toEqual([1080, 2340]);

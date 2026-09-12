@@ -30,9 +30,15 @@ to stay current as templates are added.
   it moves the composition upward as necessary to leave room for the palette and signature.
   Saved `nowPlaying` drafts migrate to `custom` with the dark preset. Preserve their image, crop,
   content and old manual colors, even when those colors are not currently used by the dark preset.
-- `polaroid` — fixed off-white instant-film paper with dark caption ink, plus an editable wall
-  background and wall-facing text color. Keep the paper and its ink independent from the wall
-  colors. Progress and pause visibility are independent from the unified player's settings.
+- `polaroid` — instant-film paper with Classic, Clean, Diary, Cinema and Noir presets. Presets
+  preserve the photo, crop, title, artist, date/note, wall colors and credit while resetting paper
+  styling. Paper and caption ink are independently editable from wall colors; automatic paper
+  ink follows paper contrast. Photo ratio, border, caption area, corners, rotation, placement,
+  shadow, typography, tape and wall pattern are customizable. Use the shared `polaroidLayout`
+  for rendering and crop interaction, including inverse rotation for pointer movement. Keep
+  the whole rotated card and caption inside the canvas with room for palette and credit.
+  Old drafts without `polaroid` settings open as Classic and inherit their saved progress/pause
+  toggles. New playback settings belong to this template; hidden progress bypasses time validation.
 - `albumCover` — a color area above an edge-to-edge rectangular photo. The split and up to 12
   independent text blocks are editable, including typography and percentage-based positions.
   Supports a 2400 × 2400 square canvas or the selected iPhone size. Uses its own text content,
@@ -54,8 +60,8 @@ all three languages, and make sure `restoreDraft()` still defaults old saved dra
 template id (never invalidate a user's saved draft just because a new template shipped).
 
 Shared rules across every template:
-- Use each template's supported layout controls: a movable player composition, fixed Polaroid
-  paper, and independently positioned Album Cover text. Keep photo processing limited to cropping.
+- Use each template's supported layout controls: a movable player composition, adjustable Polaroid
+  cards, and independently positioned Album Cover text. Keep photo processing limited to cropping.
 - Preview and exported PNG must be pixel-identical (same renderer, same draft).
 - Playback controls, palette strip, etc. are decorative — nothing in the canvas is interactive.
 - Any decorative icon should stay in this project's simple hand-drawn line/Path2D style, not a
@@ -64,7 +70,7 @@ Shared rules across every template:
 ## Photo handling
 
 User uploads a photo (JPG/PNG/WebP/HEIC where the browser can decode it, ≤30 MB). It's cropped to a
-square for Music Player and Polaroid, or to the lower rectangular area for Album Cover. The user
+square for Music Player, to the selected 1:1 / 3:4 / 16:9 photo area for Polaroid, or to the lower rectangular area for Album Cover. The user
 can drag/pan and zoom (1×–4×). Keep the photo aspect ratio intact. The long edge is
 downscaled to 2400px before storage to bound memory. Processing is on-device only — nothing is ever
 uploaded anywhere.
@@ -85,7 +91,7 @@ Polaroid walls and Album Cover backgrounds use the user's chosen colors. The pla
 dark background darkens extracted colors to support light text, and offers extra darkness adjustment.
 The player chooses automatic ink against both gradient endpoints and supports manual overrides for
 all text/icons, title, and artist independently. Player ink is stored separately from other templates.
-Polaroid caption ink stays fixed against its fixed paper; wall colors only recolor the wall and its text.
+Polaroid paper and caption ink have their own settings; wall colors only recolor the wall and its text.
 
 ## Optional extras
 
@@ -96,7 +102,7 @@ Polaroid caption ink stays fixed against its fixed paper; wall colors only recol
 
 ## Fonts
 
-Music Player and Album Cover let users choose system sans, serif, mono, or self-hosted Noto Sans
+Every template lets users choose system sans, serif, mono, or self-hosted Noto Sans
 Thai/JP. Load selected fonts before export, including independent title/artist weights.
 Other text uses the OS system font stack (San Francisco on Apple devices) with Noto Sans Thai/JP as
 fallbacks for non-Latin text, self-hosted (no Google Fonts / third-party font network calls at
