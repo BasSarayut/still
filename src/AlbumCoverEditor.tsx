@@ -1,9 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { coverFonts, createCoverText, type AlbumCover, type CoverText } from './albumCover';
+import { applyCoverPreset, coverFonts, createAlbumCover, createCoverText, type AlbumCover, type CoverPreset, type CoverText } from './albumCover';
 import type { Messages } from './i18n';
 
 type Props = { value: AlbumCover; ink: string; copy: Messages; onChange: (value: AlbumCover) => void };
+
+const COVER_PRESETS: CoverPreset[] = ['classic', 'poster', 'cassette', 'vinyl', 'zine'];
+const COVER_PRESET_NAMES = ['Classic', 'Poster', 'Cassette', 'Vinyl', 'Zine'];
+
+export function CoverPresets({ value, copy, onChange }: Omit<Props, 'ink'>) {
+  return <div className="cover-presets"><p className="field-hint">{copy.coverPresetHint}</p><div>{COVER_PRESETS.map((preset, index) => {
+    const target = createAlbumCover(preset);
+    const selected = value.split === target.split && value.texts.length === target.texts.length
+      && target.texts.every((text, textIndex) => {
+        const current = value.texts[textIndex];
+        return current?.id === text.id && (Object.keys(text) as (keyof CoverText)[]).every(key => key === 'text' || key === 'visible' || current[key] === text[key]);
+      });
+    return <button type="button" key={preset} className={`cover-preset ${preset}`} aria-pressed={selected} onClick={() => onChange(applyCoverPreset(value, preset))}>
+      <span className="cover-sample" aria-hidden="true"><i /><b /><em /></span>
+      <strong>{COVER_PRESET_NAMES[index]}</strong>
+      <small>{[copy.coverClassicHint, copy.coverPosterHint, copy.coverCassetteHint, copy.coverVinylHint, copy.coverZineHint][index]}</small>
+    </button>;
+  })}</div></div>;
+}
 
 function NumberField({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void }) {
   const [input, setInput] = useState(String(value));

@@ -42,7 +42,11 @@ to stay current as templates are added.
 - `albumCover` — a color area above an edge-to-edge rectangular photo. The split and up to 12
   independent text blocks are editable, including typography and percentage-based positions.
   Supports a 2400 × 2400 square canvas or the selected iPhone size. Uses its own text content,
-  rather than the player's title, artist and playback times.
+  rather than the player's title, artist and playback times. Classic, Poster, Cassette, Vinyl
+  and Zine are starting presets that set the split ratio plus typography and position for the
+  four built-in text roles (artist, title, credits, note). Applying a preset keeps each role's
+  current text and visibility and leaves any custom text blocks beyond those four untouched,
+  resetting only style and position (see `applyCoverPreset`).
 
 Architecture (`src/renderer.ts` + `src/renderers/`):
 - `renderers/shared.ts` — helpers shared by every template (`fontFamily`, `composition`,

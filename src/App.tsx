@@ -6,7 +6,7 @@ import { canvasBlob, decodeImage, importImage } from './images';
 import { loadDraft, saveDraft } from './storage';
 import { prepareFonts, renderWallpaper } from './renderer';
 import Preview from './Preview';
-import AlbumCoverEditor from './AlbumCoverEditor';
+import AlbumCoverEditor, { CoverPresets } from './AlbumCoverEditor';
 import PlayerEditor, { PlayerBackground, PlayerPresets } from './PlayerEditor';
 import PolaroidEditor, { PolaroidPresets } from './PolaroidEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
@@ -184,6 +184,7 @@ export default function App() {
             <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
             {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
             {isPolaroid && <PolaroidPresets value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
+            {isCover && <CoverPresets value={draft.albumCover} copy={copy} onChange={albumCover => update({ albumCover })} />}
           </Section>
 
           <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
