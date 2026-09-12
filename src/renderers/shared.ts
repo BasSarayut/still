@@ -19,6 +19,9 @@ export async function prepareFonts(draft: Draft) {
     }
   }
   if (draft.templateId === 'custom') {
+    const notes = `${draft.player.extraText} ${draft.player.lyrics} ${draft.player.recordLabel}`;
+    fonts.push(document.fonts.load(`500 14px ${fontFamily}`, notes));
+    fonts.push(document.fonts.load(`600 ${draft.player.lyricSize}px ${coverFonts[draft.player.lyricFont]}`, draft.player.lyrics));
     fonts.push(document.fonts.load(`${draft.player.titleWeight} ${draft.player.titleSize}px ${coverFonts[draft.player.titleFont]}`, draft.title));
     fonts.push(document.fonts.load(`${draft.player.artistWeight} ${draft.player.artistSize}px ${coverFonts[draft.player.artistFont]}`, draft.artist));
   }

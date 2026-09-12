@@ -48,11 +48,11 @@ export default function App() {
   const isPolaroid = draft.templateId === 'polaroid';
   const isTicket = draft.templateId === 'concertTicket';
   const photoRequired = !isTicket || draft.concertTicket.showPhoto;
-  const autoBackground = isPlayer && draft.player.backgroundMode === 'photo';
+  const autoBackground = isPlayer && ['photo', 'ambient'].includes(draft.player.backgroundMode);
   const isSquare = isCover && draft.albumCover.format === 'square';
   const device = isSquare ? { name: 'album-cover', width: 2400, height: 2400, source: '' } : getDevice(draft.device);
   const timeValid = isTicket || isCover || (isPlayer && !draft.player.showProgress) || (isPolaroid && !draft.polaroid.showProgress) || validTimes(draft.elapsed, draft.duration);
-  const foreground = isPlayer ? playerColors(draft).foreground : draft.foreground ?? automaticForeground(draft.background);
+  const foreground = isPlayer ? playerColors(draft).contentForeground : draft.foreground ?? automaticForeground(draft.background);
   const customForeground = isPlayer ? draft.player.foreground : draft.foreground;
   const updateForeground = (foreground: string | null) => update(isPlayer ? { player: { ...draft.player, foreground } } : { foreground });
   const template = TEMPLATES.find(item => item.id === draft.templateId) ?? TEMPLATES[0];

@@ -122,11 +122,16 @@ export function cropRect(width: number, height: number, crop: Crop) {
 export function playerColors(draft: Draft) {
   const settings = draft.player;
   const [first, second] = darkestColors(draft.palette);
-  const start = settings.backgroundMode === 'photo' ? mixWithBlack(darkenForContrast(second, 0.09), settings.darkness / 100) : draft.background;
-  const end = settings.backgroundMode === 'photo' ? mixWithBlack(darkenForContrast(first, 0.035), settings.darkness / 100) : settings.backgroundMode === 'gradient' ? settings.gradientEnd : start;
+  const derived = settings.backgroundMode === 'photo' || settings.backgroundMode === 'ambient';
+  const start = derived ? mixWithBlack(darkenForContrast(second, settings.backgroundMode === 'ambient' ? 0.2 : 0.09), settings.darkness / 100) : draft.background;
+  const end = derived ? mixWithBlack(darkenForContrast(first, 0.035), settings.darkness / 100) : settings.backgroundMode === 'gradient' ? settings.gradientEnd : start;
   const contrast = (ink: string, background: string) => (Math.max(luminance(ink), luminance(background)) + 0.05) / (Math.min(luminance(ink), luminance(background)) + 0.05);
   const score = (ink: string) => Math.min(contrast(ink, start), contrast(ink, end));
-  return { start, end, foreground: settings.foreground ?? (score(lightText) > score(darkText) ? lightText : darkText) };
+  const foreground = settings.foreground ?? (score(lightText) > score(darkText) ? lightText : darkText);
+  const composite = (background: string) => '#' + [1, 3, 5].map(index => Math.round(parseInt(settings.panelColor.slice(index, index + 2), 16) * settings.panelOpacity / 100 + parseInt(background.slice(index, index + 2), 16) * (1 - settings.panelOpacity / 100)).toString(16).padStart(2, '0')).join('');
+  const surfaceScore = (ink: string) => Math.min(contrast(ink, composite(start)), contrast(ink, composite(end)));
+  const contentForeground = settings.foreground ?? (settings.panel === 'none' ? foreground : surfaceScore(lightText) > surfaceScore(darkText) ? lightText : darkText);
+  return { start, end, foreground, contentForeground };
 }
 
 export function restoreDraft(value: unknown): Draft {

@@ -1,0 +1,21 @@
+.player-preset { min-width: 0; text-align: center; }
+.player-preset.mini .preset-art { width: 56px; height: 34px; margin-block: 11px; position: relative; flex-direction: row; border-radius: 5px; }
+.player-preset.mini .preset-art i { width: 18px; height: 18px; border-radius: 3px; }
+.player-preset.mini .preset-art b { width: 16px; }
+.player-preset.mini .preset-art em { position: absolute; right: 11px; bottom: 5px; width: 4px; height: 4px; }
+.player-preset.glass .preset-art { background: linear-gradient(145deg,#67877e,#313b57); border: 1px solid #cbded899; border-radius: 5px; }
+.player-preset.glass .preset-art i { border-radius: 3px; }
+.player-preset.glass .preset-art b { background: #eef4eb; }
+.player-preset.glass .preset-art em { border-color: #eef4eb; }
+.player-preset.lyrics .preset-art { background: #2b353c; position: relative; padding-top: 31px; }
+.player-preset.lyrics .preset-art:before { content: ''; position: absolute; top: 9px; left: 6px; width: 29px; height: 15px; background: linear-gradient(to bottom,#f4eddd 0 3px,transparent 3px 6px,#f4eddd55 6px 9px,transparent 9px 12px,#f4eddd55 12px 15px); }
+.player-preset.lyrics .preset-art i { width: 12px; height: 12px; align-self: flex-start; }
+.player-preset.lyrics .preset-art b { background: #d2ddd7; }
+.player-preset.lyrics .preset-art em { display: none; }
+.player-preset.vinyl .preset-art { position: relative; }
+.player-preset.vinyl .preset-art:before { content: ''; position: absolute; top: 9px; right: 2px; width: 25px; height: 25px; border-radius: 50%; background: radial-gradient(circle,#d4bba2 0 24%,#202226 25% 65%,#596063 66% 68%,#202226 69%); }
+.player-preset.vinyl .preset-art i { position: relative; width: 23px; height: 25px; align-self: flex-start; }
+.player-editor textarea { display: block; width: 100%; max-width: 100%; min-height: 80px; max-height: 300px; padding: 12px 14px; resize: vertical; font: inherit; font-size: 14px; line-height: 1.7; border: 1px solid #dce3e1; border-radius: 6px; background: #f8faf9; color: var(--ink); }
+.player-editor textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.player-reset-section { margin-top: 12px; }
+@media(max-width:760px) { .player-editor textarea { font-size: 16px; } .player-reset-section { min-height: 44px; } }
