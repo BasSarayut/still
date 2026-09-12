@@ -5,8 +5,12 @@ export const fontFamily = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", 
 export const composition = (height: number) => ({ left: 33, top: height * 0.255, size: 404 });
 
 export async function prepareFonts(draft: Draft) {
-  const text = `${draft.title} ${draft.artist} ${draft.credit} ${draft.templateId === 'albumCover' ? draft.albumCover.texts.map(item => item.text).join(' ') : ''}`;
+  const text = `${draft.title} ${draft.artist} ${draft.credit} ${draft.templateId === 'albumCover' ? draft.albumCover.texts.map(item => item.text).join(' ') : ''} ${draft.templateId === 'concertTicket' ? draft.concertTicket.fields.map(item => `${item.label} ${item.text}`).join(' ') + draft.concertTicket.stubText + draft.concertTicket.badge : ''}`;
   const fonts: Promise<FontFace[]>[] = [];
+  if (draft.templateId === 'concertTicket') {
+    for (const item of draft.concertTicket.fields.filter(item => item.visible)) fonts.push(document.fonts.load(`${item.weight} ${item.size}px ${coverFonts[item.font]}`, item.text));
+    fonts.push(document.fonts.load(`500 18px ${coverFonts.mono}`, text));
+  }
   if (/[\u0E00-\u0E7F]/.test(text)) fonts.push(document.fonts.load('650 25px "Noto Sans Thai Variable"', text));
   if (/[\u3000-\u9FFF\uFF00-\uFFEF]/.test(text)) fonts.push(document.fonts.load('650 25px "Noto Sans JP Variable"', text));
   if (draft.templateId === 'albumCover') {

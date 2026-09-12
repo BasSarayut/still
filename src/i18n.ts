@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { ticketMessages } from './ticketI18n';
 
 export type Language = 'th' | 'en' | 'ja';
 
 const th = {
+  ...ticketMessages.th,
   polaroidPresetHint: 'เลือกสไตล์กระดาษ แล้วปรับต่อได้ รูป ข้อความ วันที่ และสีพื้นหลังที่เลือกจะยังอยู่',
   polaroidClassicHint: 'กรอบคลาสสิก · เครื่องเล่นเพลง', polaroidCleanHint: 'เรียบโปร่ง · ข้อความกึ่งกลาง', polaroidDiaryHint: 'กระดาษครีม · เทปและโน้ต', polaroidCinemaHint: 'ภาพกว้าง · คำบรรยาย', polaroidNoirHint: 'กระดาษเข้ม · ภาพแนวตั้ง',
   polaroidFrame: 'กรอบกระดาษและการจัดวาง', polaroidPhotoFormat: 'สัดส่วนรูป', polaroidSquare: 'จัตุรัส · 1:1', polaroidPortrait: 'แนวตั้ง · 3:4', polaroidLandscape: 'แนวนอน · 16:9',
@@ -79,6 +81,7 @@ export type MessageKey = keyof typeof th;
 export type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
+  ...ticketMessages.en,
   polaroidPresetHint: 'Choose a paper style, then make it yours. Your photo, text, date, and chosen background color stay with you.',
   polaroidClassicHint: 'Classic frame · music player', polaroidCleanHint: 'Airy · centered caption', polaroidDiaryHint: 'Cream paper · tape & notes', polaroidCinemaHint: 'Wide photo · subtitles', polaroidNoirHint: 'Dark paper · portrait',
   polaroidFrame: 'Paper frame & layout', polaroidPhotoFormat: 'Photo aspect ratio', polaroidSquare: 'Square · 1:1', polaroidPortrait: 'Portrait · 3:4', polaroidLandscape: 'Landscape · 16:9',
@@ -152,6 +155,7 @@ const en: Messages = {
 };
 
 const ja: Messages = {
+  ...ticketMessages.ja,
   polaroidPresetHint: '紙のスタイルを選んで、自由に調整。写真、文字、日付、選択した背景色はそのまま残ります。',
   polaroidClassicHint: '定番のフレーム・音楽', polaroidCleanHint: '余白・中央揃え', polaroidDiaryHint: 'クリーム色・テープとメモ', polaroidCinemaHint: '横長の写真・字幕', polaroidNoirHint: 'ダークな台紙・縦長',
   polaroidFrame: '台紙とレイアウト', polaroidPhotoFormat: '写真の縦横比', polaroidSquare: '正方形・1:1', polaroidPortrait: '縦長・3:4', polaroidLandscape: '横長・16:9',

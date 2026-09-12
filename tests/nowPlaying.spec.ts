@@ -23,7 +23,7 @@ test('Now Playing is a customizable preset inside the unified Music Player', asy
   await expect(page.locator('.swatches')).toBeVisible();
   const backgroundBefore = await page.locator('#background').inputValue();
 
-  await expect(page.locator('#template option')).toHaveCount(3);
+  await expect(page.locator('#template option')).toHaveCount(4);
   await expect(page.locator('#template option[value="nowPlaying"]')).toHaveCount(0);
   await page.getByRole('button', { name: 'Now Playing', exact: true }).click();
   await expect(page.locator('#template')).toHaveValue('custom');

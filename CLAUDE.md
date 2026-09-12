@@ -57,6 +57,18 @@ Architecture (`src/renderer.ts` + `src/renderers/`):
 - `renderer.ts` — a thin dispatcher on `draft.templateId`. Preview (`Preview.tsx`) and export
   (`App.tsx`) both call `renderWallpaper()` from here so preview and PNG output can never diverge.
 
+Concert Ticket (`concertTicket`) adds Photo Pass, Classic Stub and Midnight Live presets.
+It owns event information independently of song and album content. Each field keeps an editable
+label, string value (including leading zeros), visibility, order and typography. Presets preserve
+field content/order/visibility, badge text, custom stub text, photo/crop and wallpaper background;
+they reset ticket styling. Linked stubs display seating fields, with event/date repeated in landscape;
+unlinking the stub returns seating fields to the main body and allows a personal stub message.
+Use `ticketLayout` for both paper rendering and the rotated crop hit target. Hidden fields reflow;
+the whole card stays within the canvas, and paper grain uses a fixed seed for stable exports.
+Turning off the ticket photo permits text-only PNG export. Ticket export bypasses music time
+validation. Barcode artwork is decorative. Palette strips and shared signatures belong to the
+other templates; Ticket uses its own note and decorations.
+
 **Adding a new template:** add a new `TemplateId` value in `model.ts`, add a `renderers/x.ts` file
 following the same signature, register it in `renderer.ts`'s dispatch and in the `TEMPLATES` array
 in `App.tsx` (id, ordinal number, badge text, i18n label key), add translations in `i18n.ts` for

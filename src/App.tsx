@@ -9,6 +9,7 @@ import Preview from './Preview';
 import AlbumCoverEditor, { CoverPresets } from './AlbumCoverEditor';
 import PlayerEditor, { PlayerBackground, PlayerPresets } from './PlayerEditor';
 import PolaroidEditor, { PolaroidPresets } from './PolaroidEditor';
+import ConcertTicketEditor, { TicketContent, TicketDecorations, TicketPaper, TicketPresets } from './ConcertTicketEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
@@ -19,10 +20,11 @@ function Section({ number, title, children, extra }: { number: string; title: st
   return <section className="control-section"><div className="section-heading"><h2><span>{number}</span>{title}</h2>{extra}</div>{children}</section>;
 }
 
-const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templatePolaroid' | 'templateAlbumCover' }[] = [
+const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templatePolaroid' | 'templateAlbumCover' | 'templateConcertTicket' }[] = [
   { id: 'custom', number: '01', badge: 'THE MUSIC PLAYER', labelKey: 'template' },
   { id: 'polaroid', number: '02', badge: 'POLAROID', labelKey: 'templatePolaroid' },
   { id: 'albumCover', number: '03', badge: 'ALBUM COVER', labelKey: 'templateAlbumCover' },
+  { id: 'concertTicket', number: '04', badge: 'CONCERT TICKET', labelKey: 'templateConcertTicket' },
 ];
 
 export default function App() {
@@ -44,10 +46,12 @@ export default function App() {
   const isCover = draft.templateId === 'albumCover';
   const isPlayer = draft.templateId === 'custom';
   const isPolaroid = draft.templateId === 'polaroid';
+  const isTicket = draft.templateId === 'concertTicket';
+  const photoRequired = !isTicket || draft.concertTicket.showPhoto;
   const autoBackground = isPlayer && draft.player.backgroundMode === 'photo';
   const isSquare = isCover && draft.albumCover.format === 'square';
   const device = isSquare ? { name: 'album-cover', width: 2400, height: 2400, source: '' } : getDevice(draft.device);
-  const timeValid = isCover || (isPlayer && !draft.player.showProgress) || (isPolaroid && !draft.polaroid.showProgress) || validTimes(draft.elapsed, draft.duration);
+  const timeValid = isTicket || isCover || (isPlayer && !draft.player.showProgress) || (isPolaroid && !draft.polaroid.showProgress) || validTimes(draft.elapsed, draft.duration);
   const foreground = isPlayer ? playerColors(draft).foreground : draft.foreground ?? automaticForeground(draft.background);
   const customForeground = isPlayer ? draft.player.foreground : draft.foreground;
   const updateForeground = (foreground: string | null) => update(isPlayer ? { player: { ...draft.player, foreground } } : { foreground });
@@ -122,7 +126,7 @@ export default function App() {
   }
 
   async function exportPng() {
-    if (!image || !timeValid || busy || exporting) return;
+    if ((!image && photoRequired) || !timeValid || busy || exporting) return;
     setExporting(true); setError(null);
     const currentDraft = draft;
     try {
@@ -185,6 +189,7 @@ export default function App() {
             {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
             {isPolaroid && <PolaroidPresets value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
             {isCover && <CoverPresets value={draft.albumCover} copy={copy} onChange={albumCover => update({ albumCover })} />}
+            {isTicket && <TicketPresets value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />}
           </Section>
 
           <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
@@ -205,7 +210,10 @@ export default function App() {
             {image && <div className="crop-controls"><div className="zoom-heading"><label htmlFor="zoom">{copy.zoom}</label><span>{draft.crop.zoom.toFixed(2)}×</span><button className="text-button" onClick={() => update({ crop: initialCrop })}><RotateCcw size={12} /> {copy.center}</button></div><div className="range-row"><Minus size={13} /><input id="zoom" type="range" min="1" max="4" step="0.01" value={draft.crop.zoom} onChange={event => update({ crop: { ...draft.crop, zoom: Number(event.target.value) } })} /><Plus size={13} /></div><p className="field-hint">{copy.cropHint}</p></div>}
           </Section>
 
-          {isCover ? <Section number="04" title={copy.coverLayout}>
+          {isTicket ? <Section number="04" title={copy.ticketContent}>
+            <TicketContent value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />
+            <ConcertTicketEditor value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />
+          </Section> : isCover ? <Section number="04" title={copy.coverLayout}>
             <div className="zoom-heading"><label htmlFor="cover-split">{copy.coverSplit}</label><span>{draft.albumCover.split}%</span></div>
             <input id="cover-split" type="range" min="20" max="80" step="1" value={draft.albumCover.split} onChange={event => update({ albumCover: { ...draft.albumCover, split: Number(event.target.value) } })} />
             <p className="field-hint">{copy.coverLayoutHint}</p>
@@ -225,12 +233,13 @@ export default function App() {
             {!autoBackground && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
             <div className="color-row"><label htmlFor="background">{copy.background}</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
             </>}
-            <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${customForeground === null ? 'active' : ''}`} aria-pressed={customForeground === null} onClick={() => updateForeground(null)}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => updateForeground(event.target.value)} /></div>
+            {!isTicket && <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${customForeground === null ? 'active' : ''}`} aria-pressed={customForeground === null} onClick={() => updateForeground(null)}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => updateForeground(event.target.value)} /></div>}
+            {isTicket && <TicketPaper value={draft.concertTicket} copy={copy} palette={draft.palette} onChange={concertTicket => update({ concertTicket })} />}
             {draft.templateId === 'polaroid' && <p className="field-hint">{copy.colorsPolaroidHint}</p>}
-            {!isCover && <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>}
+            {!isCover && !isTicket && <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>}
           </Section>
 
-          {isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} onChange={albumCover => update({ albumCover })} /></Section> : <Section number="06" title={copy.signature}>
+          {isTicket ? <Section number="06" title={copy.ticketDecorations}><TicketDecorations value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section> : isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} onChange={albumCover => update({ albumCover })} /></Section> : <Section number="06" title={copy.signature}>
             <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
             {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
           </Section>}
@@ -238,8 +247,8 @@ export default function App() {
         <div className="export-area">
           {error && <div className="error-message" role="alert">{copy[error]}<button className="icon-button" aria-label={copy.dismissError} onClick={() => setError(null)}><X size={15} /></button></div>}
           {download && <div className="download-result" role="status"><strong><Check size={15} /> {copy.pngReady}</strong><p>{copy.downloadRetry} <a href={download.url} download={download.file.name}>{copy.saveAgain}</a></p>{navigator.canShare?.({ files: [download.file] }) && <button className="share-button" onClick={() => void sharePng()}><Share2 size={15} /> {copy.share}</button>}</div>}
-          <div className="export-actions"><a className="jump-preview" href="#preview">{copy.viewPreview}</a><button className="export-button" disabled={!ready || !image || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}<span>↗</span></button></div>
-          <p className="export-note">{!image ? copy.startHint : `${device.width} × ${device.height} px · ${copy.noWatermark}`}</p>
+          <div className="export-actions"><a className="jump-preview" href="#preview">{copy.viewPreview}</a><button className="export-button" disabled={!ready || (!image && photoRequired) || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}<span>↗</span></button></div>
+          <p className="export-note">{!image && photoRequired ? copy.startHint : !image ? copy.ticketNoPhotoHint : `${device.width} × ${device.height} px · ${copy.noWatermark}`}</p>
         </div>
       </aside>
     </main>

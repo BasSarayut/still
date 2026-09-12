@@ -1,9 +1,10 @@
 import { createAlbumCover, restoreAlbumCover, type AlbumCover } from './albumCover';
 import { createPlayerSettings, restorePlayerSettings, type PlayerSettings } from './musicPlayer';
 import { createPolaroidSettings, restorePolaroidSettings, type PolaroidSettings } from './polaroid';
+import { createTicketSettings, restoreTicketSettings, type TicketSettings } from './concertTicket';
 
 export type Crop = { zoom: number; x: number; y: number };
-export type TemplateId = 'custom' | 'polaroid' | 'albumCover';
+export type TemplateId = 'custom' | 'polaroid' | 'albumCover' | 'concertTicket';
 export type Draft = {
   version: 1;
   templateId: TemplateId;
@@ -26,6 +27,7 @@ export type Draft = {
   albumCover: AlbumCover;
   player: PlayerSettings;
   polaroid: PolaroidSettings;
+  concertTicket: TicketSettings;
 };
 
 export const initialCrop: Crop = { zoom: 1, x: 0.5, y: 0.5 };
@@ -34,7 +36,7 @@ export const initialDraft: Draft = {
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
   showGuides: true, showProgress: true, showPauseGlyph: true, background: '#f3f1ec', foreground: null,
   palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
-  crop: initialCrop, image: null, albumCover: createAlbumCover(), player: createPlayerSettings(), polaroid: createPolaroidSettings(),
+  crop: initialCrop, image: null, albumCover: createAlbumCover(), player: createPlayerSettings(), polaroid: createPolaroidSettings(), concertTicket: createTicketSettings(),
 };
 
 // Fixed light/dark text colors used whenever a template needs guaranteed contrast
@@ -132,10 +134,11 @@ export function restoreDraft(value: unknown): Draft {
   const saved = value as Partial<Draft>;
   const restored = { ...initialDraft };
   const legacyDark = 'templateId' in value && value.templateId === 'nowPlaying';
-  restored.templateId = saved.templateId === 'polaroid' || saved.templateId === 'albumCover' ? saved.templateId : 'custom';
+  restored.templateId = saved.templateId === 'polaroid' || saved.templateId === 'albumCover' || saved.templateId === 'concertTicket' ? saved.templateId : 'custom';
   restored.player = restorePlayerSettings(saved.player, legacyDark ? 'dark' : 'classic');
   restored.albumCover = restoreAlbumCover(saved.albumCover);
   restored.polaroid = restorePolaroidSettings(saved.polaroid);
+  restored.concertTicket = restoreTicketSettings(saved.concertTicket);
   if (!saved.polaroid) {
     for (const key of ['showProgress', 'showPauseGlyph'] as const) if (typeof saved[key] === 'boolean') restored.polaroid[key] = saved[key];
   }
