@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 export type Language = 'th' | 'en' | 'ja';
 
 const th = {
+  siteTitle: 'สตูดิโอวอลเปเปอร์และปกอัลบั้ม',
+  siteDescription: 'สร้างวอลเปเปอร์และปกอัลบั้มจากรูปของคุณด้วย ill. ปรับแต่งเลย์เอาต์ สี ฟอนต์ และข้อความ ดาวน์โหลด PNG ฟรี ไม่มีลายน้ำ รูปไม่ออกจากเครื่อง',
   language: 'ภาษา', help: 'วิธีใช้งาน', closeHelp: 'ปิดวิธีใช้งาน',
   tagline: 'วอลเปเปอร์ที่เป็นคุณมากขึ้น', studio: 'สตูดิโอวอลเปเปอร์ของคุณ',
   headingPhoto: 'รูปของคุณ', headingMusic: 'เพลงของคุณ', subtitle: 'เก็บความรู้สึกดี ๆ ไว้บนหน้าจอ',
@@ -68,6 +70,8 @@ export type MessageKey = keyof typeof th;
 export type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
+  siteTitle: 'Wallpaper & album cover studio',
+  siteDescription: 'Create wallpapers and album covers from your photos with ill. Customize layouts, colors, fonts, and text. Download free PNGs without watermarks. Your photos stay on your device.',
   language: 'Language', help: 'How to use', closeHelp: 'Close help',
   tagline: 'A wallpaper, a little more you.', studio: 'Your personal wallpaper studio',
   headingPhoto: 'Your photo.', headingMusic: 'Your song.', subtitle: 'Keep a little feeling on your screen.',
@@ -130,6 +134,8 @@ const en: Messages = {
 };
 
 const ja: Messages = {
+  siteTitle: '壁紙・アルバムカバー制作スタジオ',
+  siteDescription: 'ill. でお気に入りの写真から壁紙やアルバムカバーを作成。レイアウト、色、フォント、文字を自由に調整し、透かしなしのPNGを無料でダウンロード。写真は端末内だけで処理されます。',
   language: '言語', help: '使い方', closeHelp: '使い方を閉じる',
   tagline: 'あなたらしさを、壁紙に。', studio: 'あなただけの壁紙スタジオ',
   headingPhoto: '好きな写真。', headingMusic: '好きな音楽。', subtitle: '大切な気持ちを、いつも画面に。',
@@ -211,7 +217,8 @@ export function useLanguage() {
   });
   useEffect(() => {
     document.documentElement.lang = language;
-    document.title = `still. — ${translations[language].editor}`;
+    document.title = `ill. — ${translations[language].siteTitle}`;
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content', translations[language].siteDescription);
     try { localStorage.setItem(languageStorageKey, language); } catch {}
   }, [language]);
   return { language, setLanguage, copy: translations[language] };

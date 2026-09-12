@@ -148,7 +148,7 @@ export default function App() {
 
   return <div className="app-shell">
     <header className="site-header">
-      <a className="brand" href="#main" aria-label="still. Wallpaper studio"><span className="brand-mark"><i /><i /></span><span>still<span className="brand-dot">.</span></span></a>
+      <a className="brand" href="#main" aria-label={`ill. — ${copy.siteTitle}`}><span>ill<span className="brand-dot">.</span></span></a>
       <span className="brand-description">{copy.tagline}</span>
       <div className="language-picker"><label className="sr-only" htmlFor="language">{copy.language}</label><select id="language" value={language} onChange={event => setLanguage(event.target.value as typeof language)}><option value="th" lang="th">ไทย</option><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option></select><ChevronDown size={13} aria-hidden="true" /></div>
       <button className="help-button" onClick={() => setHelp(!help)} aria-expanded={help}><CircleHelp size={17} /><span>{copy.help}</span></button>
@@ -238,6 +238,6 @@ export default function App() {
         </div>
       </aside>
     </main>
-    <footer className="site-footer"><span>still. <span>{copy.footer}</span></span><span>{copy.footerNote}</span></footer>
+    <footer className="site-footer"><span>ill. <span>{copy.footer}</span></span><span>{copy.footerNote}</span></footer>
   </div>;
 }
