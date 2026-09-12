@@ -16,9 +16,10 @@ function Section({ number, title, children, extra }: { number: string; title: st
   return <section className="control-section"><div className="section-heading"><h2><span>{number}</span>{title}</h2>{extra}</div>{children}</section>;
 }
 
-const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templateNowPlaying' }[] = [
+const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templateNowPlaying' | 'templatePolaroid' }[] = [
   { id: 'custom', number: '01', badge: 'THE MUSIC PLAYER', labelKey: 'template' },
   { id: 'nowPlaying', number: '02', badge: 'NOW PLAYING', labelKey: 'templateNowPlaying' },
+  { id: 'polaroid', number: '03', badge: 'POLAROID', labelKey: 'templatePolaroid' },
 ];
 
 export default function App() {
@@ -195,13 +196,16 @@ export default function App() {
             <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
             <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
             {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
+            {draft.templateId === 'polaroid' && <><Toggle checked={draft.showProgress} onChange={showProgress => update({ showProgress })}>{copy.showProgress}</Toggle>
+            <Toggle checked={draft.showPauseGlyph} onChange={showPauseGlyph => update({ showPauseGlyph })}>{copy.showPauseGlyph}</Toggle></>}
           </Section>
 
-          <Section number="05" title={copy.colors} extra={draft.templateId === 'custom' && <span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
-            {draft.templateId === 'custom' && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
+          <Section number="05" title={copy.colors} extra={draft.templateId !== 'nowPlaying' && <span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
+            {draft.templateId !== 'nowPlaying' && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
             <div className="color-row"><label htmlFor="background">{copy.background}</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
             <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div></>}
             {draft.templateId === 'nowPlaying' && <p className="field-hint">{copy.colorsAutoHint}</p>}
+            {draft.templateId === 'polaroid' && <p className="field-hint">{copy.colorsPolaroidHint}</p>}
             <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>
           </Section>
 

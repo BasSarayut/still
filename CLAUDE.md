@@ -29,6 +29,19 @@ to stay current as templates are added.
   guarantees enough contrast for the fixed light text regardless of how bright the source photo
   is) — background/foreground pickers are hidden for this template because color is automatic.
   Rounded, shadowed artwork card; remaining-time countdown (`-m:ss`) instead of total duration.
+- `polaroid` — instant-film theme: the artwork sits in a fixed off-white paper card (like the
+  `nowPlaying` card, the paper color itself is a template constant, not user-editable) with a thick
+  bottom caption border holding title/artist/progress. Unlike `nowPlaying`, background/foreground
+  pickers stay visible and apply to the wall behind the card (same fields/UI as `custom`) — this is
+  the template's one point of fine-grained color customization. Text printed on the fixed white
+  paper (title, artist, times) always uses a fixed dark ink (`darkText`) regardless of the wall
+  color the user picks, precisely because the paper's color doesn't move with
+  `background`/`foreground` — if a future change ever makes the paper itself user-tintable, the
+  caption ink must be recomputed against that paper color instead, or dark-on-dark/light-on-light
+  contrast breaks. The progress bar (with elapsed/duration) and the pause glyph are each
+  independently toggleable (`showProgress`, `showPauseGlyph` in `model.ts`, both on by default) —
+  the one place a template currently lets the user hide individual playback ornaments rather than
+  just the whole palette strip or credit line.
 
 Architecture (`src/renderer.ts` + `src/renderers/`):
 - `renderers/shared.ts` — helpers shared by every template (`fontFamily`, `composition`,
@@ -70,15 +83,17 @@ repeat, etc.) are decorative artwork, not buttons.
 
 ## Colors
 
-On upload, ~5 colors are extracted from the photo. For the `custom` template the user can pick one
-as the background or set a fully custom background color; text/icon color defaults to an
-auto-contrast choice (`automaticForeground()`) and can be overridden. For `nowPlaying`, both
-background and text color are fully automatic (see Templates above) — don't add manual color
-controls back for that template without revisiting that decision.
+On upload, ~5 colors are extracted from the photo. For the `custom` and `polaroid` templates the
+user can pick one as the background or set a fully custom background color; text/icon color
+defaults to an auto-contrast choice (`automaticForeground()`) and can be overridden — for
+`polaroid` this only recolors the wall and the wall-facing text (palette label, credit), never the
+fixed white paper or its ink. For `nowPlaying`, both background and text color are fully automatic
+(see Templates above) — don't add manual color controls back for that template without revisiting
+that decision.
 
 ## Optional extras
 
-- Color Palette swatch strip: on by default, user can hide it. Available on both templates.
+- Color Palette swatch strip: on by default, user can hide it. Available on every template.
 - Credit line: user-editable text, hidden by default (starts empty, shown once the user enables it
   and/or types something).
 
