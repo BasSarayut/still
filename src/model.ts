@@ -1,5 +1,7 @@
+import { createAlbumCover, restoreAlbumCover, type AlbumCover } from './albumCover';
+
 export type Crop = { zoom: number; x: number; y: number };
-export type TemplateId = 'custom' | 'nowPlaying' | 'polaroid';
+export type TemplateId = 'custom' | 'nowPlaying' | 'polaroid' | 'albumCover';
 export type Draft = {
   version: 1;
   templateId: TemplateId;
@@ -19,6 +21,7 @@ export type Draft = {
   palette: string[];
   crop: Crop;
   image: Blob | null;
+  albumCover: AlbumCover;
 };
 
 export const initialCrop: Crop = { zoom: 1, x: 0.5, y: 0.5 };
@@ -27,7 +30,7 @@ export const initialDraft: Draft = {
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
   showGuides: true, showProgress: true, showPauseGlyph: true, background: '#f3f1ec', foreground: null,
   palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
-  crop: initialCrop, image: null,
+  crop: initialCrop, image: null, albumCover: createAlbumCover(),
 };
 
 // Fixed light/dark text colors used whenever a template needs guaranteed contrast
@@ -114,7 +117,8 @@ export function restoreDraft(value: unknown): Draft {
   if (!value || typeof value !== 'object' || !('version' in value) || value.version !== 1) return initialDraft;
   const saved = value as Partial<Draft>;
   const restored = { ...initialDraft };
-  restored.templateId = saved.templateId === 'nowPlaying' || saved.templateId === 'polaroid' ? saved.templateId : 'custom';
+  restored.templateId = saved.templateId === 'nowPlaying' || saved.templateId === 'polaroid' || saved.templateId === 'albumCover' ? saved.templateId : 'custom';
+  restored.albumCover = restoreAlbumCover(saved.albumCover);
   for (const key of ['device', 'title', 'artist', 'elapsed', 'duration', 'credit'] as const) {
     if (typeof saved[key] === 'string') restored[key] = saved[key].slice(0, 180);
   }
