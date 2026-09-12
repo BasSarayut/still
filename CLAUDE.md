@@ -20,28 +20,23 @@ equally well on iPhone Safari and desktop browsers.
 There is a **template registry**, not one fixed layout — this is the one place this doc most needs
 to stay current as templates are added.
 
-- `custom` (original/default) — user picks the background color (from an extracted palette or a
-  color picker) and can override the auto-computed text color. Shows an optional Color Palette
-  swatch strip.
-- `nowPlaying` — dark theme inspired by Apple Music's now-playing screen (not affiliated with
-  Apple; keep template names generic, e.g. "Now Playing", never "Apple Music"). Background is a
-  dark gradient computed from the extracted palette (`darkenForContrast` in `src/model.ts`
-  guarantees enough contrast for the fixed light text regardless of how bright the source photo
-  is) — background/foreground pickers are hidden for this template because color is automatic.
-  Rounded, shadowed artwork card; remaining-time countdown (`-m:ss`) instead of total duration.
-- `polaroid` — instant-film theme: the artwork sits in a fixed off-white paper card (like the
-  `nowPlaying` card, the paper color itself is a template constant, not user-editable) with a thick
-  bottom caption border holding title/artist/progress. Unlike `nowPlaying`, background/foreground
-  pickers stay visible and apply to the wall behind the card (same fields/UI as `custom`) — this is
-  the template's one point of fine-grained color customization. Text printed on the fixed white
-  paper (title, artist, times) always uses a fixed dark ink (`darkText`) regardless of the wall
-  color the user picks, precisely because the paper's color doesn't move with
-  `background`/`foreground` — if a future change ever makes the paper itself user-tintable, the
-  caption ink must be recomputed against that paper color instead, or dark-on-dark/light-on-light
-  contrast breaks. The progress bar (with elapsed/duration) and the pause glyph are each
-  independently toggleable (`showProgress`, `showPauseGlyph` in `model.ts`, both on by default) —
-  the one place a template currently lets the user hide individual playback ornaments rather than
-  just the whole palette strip or credit line.
+- `custom` — the unified Music Player. Classic, Now Playing and Minimal are starting presets
+  within this template. Applying a preset resets player styling while preserving the user's photo,
+  crop, song text, manually chosen background color and signature. The player supports solid,
+  custom gradient and photo-derived dark backgrounds; each supports a manual foreground override.
+  Artwork size, radius, shadow, vertical position and spacing are adjustable. Title and artist have
+  independent fonts, sizes, weights and colors. Progress, time labels, controls and heart decoration
+  have their own settings. Keep preview crop interaction and export on the same player layout;
+  it moves the composition upward as necessary to leave room for the palette and signature.
+  Saved `nowPlaying` drafts migrate to `custom` with the dark preset. Preserve their image, crop,
+  content and old manual colors, even when those colors are not currently used by the dark preset.
+- `polaroid` — fixed off-white instant-film paper with dark caption ink, plus an editable wall
+  background and wall-facing text color. Keep the paper and its ink independent from the wall
+  colors. Progress and pause visibility are independent from the unified player's settings.
+- `albumCover` — a color area above an edge-to-edge rectangular photo. The split and up to 12
+  independent text blocks are editable, including typography and percentage-based positions.
+  Supports a 2400 × 2400 square canvas or the selected iPhone size. Uses its own text content,
+  rather than the player's title, artist and playback times.
 
 Architecture (`src/renderer.ts` + `src/renderers/`):
 - `renderers/shared.ts` — helpers shared by every template (`fontFamily`, `composition`,
@@ -59,7 +54,8 @@ all three languages, and make sure `restoreDraft()` still defaults old saved dra
 template id (never invalidate a user's saved draft just because a new template shipped).
 
 Shared rules across every template:
-- Fixed composition, personal content — no freeform element positioning, no photo filters.
+- Use each template's supported layout controls: a movable player composition, fixed Polaroid
+  paper, and independently positioned Album Cover text. Keep photo processing limited to cropping.
 - Preview and exported PNG must be pixel-identical (same renderer, same draft).
 - Playback controls, palette strip, etc. are decorative — nothing in the canvas is interactive.
 - Any decorative icon should stay in this project's simple hand-drawn line/Path2D style, not a
@@ -68,14 +64,15 @@ Shared rules across every template:
 ## Photo handling
 
 User uploads a photo (JPG/PNG/WebP/HEIC where the browser can decode it, ≤30 MB). It's cropped to a
-square; the user can drag/pan and zoom (1×–4×) but there are no filters or other edits. Long edge is
+square for Music Player and Polaroid, or to the lower rectangular area for Album Cover. The user
+can drag/pan and zoom (1×–4×). Keep the photo aspect ratio intact. The long edge is
 downscaled to 2400px before storage to bound memory. Processing is on-device only — nothing is ever
 uploaded anywhere.
 
 ## Song info
 
 Title, artist, "current time" and "duration" are freeform text the user fills in themselves (this is
-not a real music player — it doesn't read metadata from anywhere). Both time fields must match
+not a real music player — it doesn't read metadata from anywhere). When the player progress bar is visible, both time fields must match
 `m:ss`/`mm:ss`/`hhh:ss`-style input and current time can't exceed duration (`parseTime`/`validTimes`
 in `model.ts`). The progress dot/fill on the time bar is purely a proportional calculation
 (`progress()`); it has no relationship to real playback. Transport controls (play/pause, shuffle,
@@ -83,23 +80,25 @@ repeat, etc.) are decorative artwork, not buttons.
 
 ## Colors
 
-On upload, ~5 colors are extracted from the photo. For the `custom` and `polaroid` templates the
-user can pick one as the background or set a fully custom background color; text/icon color
-defaults to an auto-contrast choice (`automaticForeground()`) and can be overridden — for
-`polaroid` this only recolors the wall and the wall-facing text (palette label, credit), never the
-fixed white paper or its ink. For `nowPlaying`, both background and text color are fully automatic
-(see Templates above) — don't add manual color controls back for that template without revisiting
-that decision.
+On upload, ~5 colors are extracted from the photo. Solid and custom-gradient player backgrounds,
+Polaroid walls and Album Cover backgrounds use the user's chosen colors. The player's photo-derived
+dark background darkens extracted colors to support light text, and offers extra darkness adjustment.
+The player chooses automatic ink against both gradient endpoints and supports manual overrides for
+all text/icons, title, and artist independently. Player ink is stored separately from other templates.
+Polaroid caption ink stays fixed against its fixed paper; wall colors only recolor the wall and its text.
 
 ## Optional extras
 
-- Color Palette swatch strip: on by default, user can hide it. Available on every template.
+- Color Palette: optional on Music Player and Polaroid. The player offers strips or dots. Album
+  Cover uses editable text blocks instead of playback ornaments, a palette strip or a signature field.
 - Credit line: user-editable text, hidden by default (starts empty, shown once the user enables it
   and/or types something).
 
 ## Fonts
 
-Prefer the OS system font stack (San Francisco on Apple devices) with Noto Sans Thai/JP as
+Music Player and Album Cover let users choose system sans, serif, mono, or self-hosted Noto Sans
+Thai/JP. Load selected fonts before export, including independent title/artist weights.
+Other text uses the OS system font stack (San Francisco on Apple devices) with Noto Sans Thai/JP as
 fallbacks for non-Latin text, self-hosted (no Google Fonts / third-party font network calls at
 runtime — this backs the "nothing leaves the device" privacy claim). Small cross-OS rendering
 differences in fallback fonts are accepted, not chased pixel-for-pixel.
@@ -108,7 +107,7 @@ differences in fallback fonts are accepted, not chased pixel-for-pixel.
 
 Device list starts at iPhone 12 and covers every released model sharing the same physical pixel
 resolution since (see the table in `README.md` and `src/devices.ts`), sourced from Apple's published
-specs (physical resolution, not logical points). The app remembers the last device picked as part of
+specs (physical resolution, not logical points). Album Cover additionally supports square output. The app remembers the last device picked as part of
 the draft. When Apple ships a new model with a resolution already in the list, add it to the existing
 group instead of creating a redundant one; only add a new group (and a new template variant, if the
 aspect ratio needs it) for a genuinely new resolution.
@@ -131,7 +130,8 @@ or silently drop the user's photo/text without a chance to re-download.
 ## Editor look & feel
 
 Light, airy, minimal chrome; the wallpaper preview is the focal point and controls are secondary.
-Desktop: preview left, editing tools in a right-hand panel. Mobile: editing tools stack below the
+Desktop: use the full viewport width, with a preview on the left and a responsive editing panel
+on the right. Fit the preview to available height and width; preserve space around focused fields. Mobile: editing tools stack below the
 preview. Interface ships in Thai (default), English, and Japanese with a persistent language
 switcher; switching language must never translate or alter user-authored wallpaper content (song
 title, artist, credit, etc.) — see `i18n.ts` and `useLanguage()`.
@@ -139,5 +139,5 @@ title, artist, credit, etc.) — see `i18n.ts` and `useLanguage()`.
 ## Non-goals
 
 No user accounts, no backend/API, no analytics or telemetry, no cross-device sync, no offline
-install (no service worker), no photo filters/freeform layout editing, no claim of affiliation with
+install (no service worker), no photo filters, no claim of affiliation with
 Apple or any music service.

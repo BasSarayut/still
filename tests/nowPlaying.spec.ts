@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('Now Playing template hides manual colors, renders a dark computed background, and restores custom colors on switch back', async ({ page }) => {
+test('Now Playing is a customizable preset inside the unified Music Player', async ({ page }) => {
   const errors: string[] = [];
   const externalRequests: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -23,11 +23,15 @@ test('Now Playing template hides manual colors, renders a dark computed backgrou
   await expect(page.locator('.swatches')).toBeVisible();
   const backgroundBefore = await page.locator('#background').inputValue();
 
-  await page.getByLabel('เลือกรูปแบบเทมเพลต').selectOption('nowPlaying');
+  await expect(page.locator('#template option')).toHaveCount(3);
+  await expect(page.locator('#template option[value="nowPlaying"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Now Playing', exact: true }).click();
+  await expect(page.locator('#template')).toHaveValue('custom');
   await expect(page.locator('#background')).toHaveCount(0);
   await expect(page.locator('.swatches')).toHaveCount(0);
-  await expect(page.getByText('พื้นหลังและสีข้อความคำนวณอัตโนมัติจากรูปสำหรับเทมเพลตนี้')).toBeVisible();
-  await expect(page.getByText('02 / Now Playing (ธีมมืด)')).toBeVisible();
+  await expect(page.locator('#foreground')).toBeVisible();
+  await expect(page.locator('#player-background-mode')).toHaveValue('photo');
+  await expect(page.getByText('01 / เครื่องเล่นเพลง')).toBeVisible();
 
   const firstDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'ดาวน์โหลด PNG' }).click();
@@ -41,7 +45,7 @@ test('Now Playing template hides manual colors, renders a dark computed backgrou
   });
   expect(corner[0] + corner[1] + corner[2]).toBeLessThan(200);
 
-  await page.getByLabel('เลือกรูปแบบเทมเพลต').selectOption('custom');
+  await page.getByRole('button', { name: 'Classic', exact: true }).click();
   await expect(page.locator('#background')).toBeVisible();
   await expect(page.locator('#background')).toHaveValue(backgroundBefore);
   await expect(page.getByText('01 / เครื่องเล่นเพลง')).toBeVisible();

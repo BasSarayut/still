@@ -1,10 +1,11 @@
 import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { Camera, Flashlight, CloudSun, Move } from 'lucide-react';
-import { automaticForeground, clamp, cropRect, lightText, type Crop, type Draft } from './model';
+import { automaticForeground, clamp, cropRect, playerColors, type Crop, type Draft } from './model';
 import { composition, prepareFonts, renderWallpaper } from './renderer';
 import type { Device } from './devices';
 import type { Messages } from './i18n';
 import { coverCropRect, coverPhotoFrame } from './albumCover';
+import { playerLayout } from './musicPlayer';
 
 type Props = { copy: Messages; draft: Draft; image: HTMLImageElement | null; device: Device; onCrop: (crop: Crop) => void; onUpload: () => void };
 
@@ -12,7 +13,7 @@ export default function Preview({ copy, draft, image, device, onCrop, onUpload }
   const canvas = useRef<HTMLCanvasElement>(null);
   const dragging = useRef<{ x: number; y: number; crop: Crop } | null>(null);
   const height = 470 * device.height / device.width;
-  const standardFrame = composition(height);
+  const standardFrame = draft.templateId === 'custom' ? playerLayout(height, draft.player, draft.showPalette) : composition(height);
   const frame = draft.templateId === 'albumCover' ? coverPhotoFrame(height, draft.albumCover.split) : { ...standardFrame, width: standardFrame.size, height: standardFrame.size };
   useEffect(() => {
     let cancelled = false;
@@ -37,11 +38,11 @@ export default function Preview({ copy, draft, image, device, onCrop, onUpload }
     });
   }
 
-  const ink = draft.templateId === 'nowPlaying' ? lightText : draft.foreground ?? automaticForeground(draft.background);
+  const ink = draft.templateId === 'custom' ? playerColors(draft).foreground : draft.foreground ?? automaticForeground(draft.background);
   const description = draft.templateId === 'albumCover' ? draft.albumCover.texts.filter(text => text.visible).map(text => text.text).join(' — ') : `${draft.title} — ${draft.artist}`;
   return <div className="wallpaper" style={{ aspectRatio: `${device.width}/${device.height}`, '--wallpaper-ink': ink } as CSSProperties}>
     <canvas ref={canvas} aria-label={`${copy.previewLabel} ${description}`} />
-    <button className={`artwork-hit ${image ? 'has-image' : ''}`} style={{ left: `${frame.left / 470 * 100}%`, top: `${frame.top / height * 100}%`, width: `${frame.width / 470 * 100}%`, height: `${frame.height / height * 100}%` }}
+    <button className={`artwork-hit ${image ? 'has-image' : ''}`} style={{ left: `${frame.left / 470 * 100}%`, top: `${frame.top / height * 100}%`, width: `${frame.width / 470 * 100}%`, height: `${frame.height / height * 100}%`, borderRadius: draft.templateId === 'custom' ? `${draft.player.artworkRadius / frame.width * 100}%` : undefined }}
       aria-label={image ? copy.dragPhoto : copy.uploadPhoto}
       onClick={() => { if (!image) onUpload(); }}
       onPointerDown={event => { if (image) { event.currentTarget.setPointerCapture(event.pointerId); dragging.current = { x: event.clientX, y: event.clientY, crop: draft.crop }; } }}

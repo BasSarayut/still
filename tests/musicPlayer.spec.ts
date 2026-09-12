@@ -1,0 +1,117 @@
+import { expect, test } from '@playwright/test';
+
+test('customizes a unified player, restores all settings, and exports with hidden playback', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.locator('#template')).toBeEnabled();
+  await page.locator('#language').selectOption('en');
+  const imageData = await page.evaluate(() => {
+    const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 1200;
+    const ctx = canvas.getContext('2d')!; const gradient = ctx.createLinearGradient(0, 0, 1200, 1200);
+    gradient.addColorStop(0, '#26384e'); gradient.addColorStop(1, '#daa799'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, 1200, 1200);
+    ctx.fillStyle = '#eee1cb'; ctx.beginPath(); ctx.arc(760, 380, 135, 0, Math.PI * 2); ctx.fill();
+    return canvas.toDataURL().split(',')[1];
+  });
+  await page.locator('#photo-upload').setInputFiles({ name: 'player.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') });
+  await expect(page.getByRole('button', { name: 'Download PNG' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Now Playing', exact: true }).click();
+  await page.locator('#title').fill('เพลงของเรา / Our song'); await page.locator('#artist').fill('MIDNIGHT FEELING');
+  await page.getByRole('switch', { name: 'Lock Screen preview', exact: true }).uncheck();
+  await page.locator('#player-background-mode').selectOption('gradient');
+  await page.locator('#background').fill('#26384e'); await page.locator('#player-gradient-end').fill('#715868');
+  await page.getByLabel('Gradient direction').fill('90'); await page.locator('#foreground').fill('#f5eddd');
+  await page.getByText('Artwork & layout', { exact: true }).click();
+  await page.getByLabel('Artwork size').fill('360'); await page.getByLabel('Corner radius').fill('28');
+  await page.getByLabel('Shadow strength').fill('30'); await page.getByLabel('Player vertical position').fill('32');
+  await page.getByLabel('Photo-to-text spacing').fill('26');
+  const photo = page.getByRole('button', { name: 'Move cover image. Use arrow keys to reposition.' });
+  const targetMatches = await photo.evaluate(element => {
+    const art = element.getBoundingClientRect(), canvas = document.querySelector('.wallpaper')!.getBoundingClientRect();
+    return Math.abs(art.width / canvas.width - 360 / 470) < 0.001;
+  });
+  expect(targetMatches).toBe(true);
+  await page.getByText('Fonts & text colors', { exact: true }).click();
+  await page.getByLabel('Alignment', { exact: true }).selectOption('center');
+  const title = page.getByRole('group', { name: 'Song title / text', exact: true });
+  const artist = page.getByRole('group', { name: 'Artist', exact: true });
+  await title.getByLabel('Font', { exact: true }).selectOption('thai');
+  await title.getByLabel('Font size').fill('30'); await title.getByLabel('Font weight').fill('700');
+  await artist.getByLabel('Font', { exact: true }).selectOption('mono'); await artist.getByLabel('Font size').fill('16');
+  await page.locator('#player-title-color').fill('#eed7b4');
+  await page.getByText('Player appearance', { exact: true }).click();
+  await page.getByLabel('Playback controls', { exact: true }).selectOption('compact');
+  await page.getByLabel('Center icon', { exact: true }).selectOption('pause');
+  await page.getByLabel('Button style', { exact: true }).selectOption('circle');
+  await page.getByLabel('Control size').fill('1.1');
+  await page.getByLabel('Right-hand time', { exact: true }).selectOption('remaining');
+  await page.getByRole('switch', { name: 'Show heart', exact: true }).uncheck();
+  await page.getByLabel('Palette style', { exact: true }).selectOption('dots');
+  await expect(page.getByRole('status').first()).toHaveText('Saved on this device');
+  await page.locator('.workspace').screenshot({ path: testInfo.outputPath('unified-player.png') });
+  await page.reload();
+  await expect(page.locator('#player-background-mode')).toHaveValue('gradient');
+  await expect(page.locator('#foreground')).toHaveValue('#f5eddd');
+  await expect(page.locator('#player-gradient-end')).toHaveValue('#715868');
+  await page.getByText('Artwork & layout', { exact: true }).click();
+  await expect(page.getByLabel('Artwork size')).toHaveValue('360');
+  await expect(page.getByLabel('Player vertical position')).toHaveValue('32');
+  await page.getByText('Fonts & text colors', { exact: true }).click();
+  await expect(title.getByLabel('Font', { exact: true })).toHaveValue('thai');
+  await expect(title.getByLabel('Font size')).toHaveValue('30');
+  await expect(artist.getByLabel('Font', { exact: true })).toHaveValue('mono');
+  await page.getByText('Player appearance', { exact: true }).click();
+  await expect(page.getByLabel('Playback controls', { exact: true })).toHaveValue('compact');
+  await expect(page.getByLabel('Control size')).toHaveValue('1.1');
+  await expect(page.getByLabel('Right-hand time', { exact: true })).toHaveValue('remaining');
+  const before = await page.locator('.wallpaper canvas').evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+  await page.getByLabel('Playback controls', { exact: true }).selectOption('none');
+  await page.getByRole('switch', { name: 'Show progress bar', exact: true }).uncheck();
+  await expect.poll(async () => await page.locator('.wallpaper canvas').evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL()) !== before).toBe(true);
+  await page.locator('#elapsed').fill('bad');
+  const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download PNG' }).click(); await download;
+  const exported = await page.evaluate(async () => {
+    const image = new Image(); image.src = document.querySelector<HTMLAnchorElement>('.download-result a')!.href; await image.decode();
+    const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height;
+    const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0);
+    return { width: image.width, height: image.height, left: Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3), right: Array.from(ctx.getImageData(canvas.width - 1, 0, 1, 1).data).slice(0, 3) };
+  });
+  expect(exported).toMatchObject({ width: 1179, height: 2556, left: [38, 56, 78], right: [113, 88, 104] });
+  await page.locator('#template').selectOption('polaroid'); await page.locator('#template').selectOption('custom');
+  await expect(page.locator('#player-background-mode')).toHaveValue('gradient');
+  await page.getByRole('button', { name: 'Minimal', exact: true }).click();
+  await expect(page.locator('#title')).toHaveValue('เพลงของเรา / Our song');
+  await expect(page.locator('#artist')).toHaveValue('MIDNIGHT FEELING');
+  await expect(page.getByRole('button', { name: 'Change photo' })).toBeVisible();
+  await page.locator('#language').selectOption('ja');
+  await expect(page.locator('#title')).toHaveValue('เพลงของเรา / Our song');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('opens an existing Now Playing draft as the dark preset without losing the image', async ({ page }) => {
+  await page.route('**/seed-player', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body></body></html>' }));
+  await page.goto('/seed-player');
+  await page.evaluate(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 20;
+    const ctx = canvas.getContext('2d')!; ctx.fillStyle = '#abcdef'; ctx.fillRect(0, 0, 20, 20);
+    const imageBytes = await (await fetch(canvas.toDataURL())).arrayBuffer();
+    await new Promise<void>((resolve, reject) => {
+      const open = indexedDB.open('still-wallpaper', 1);
+      open.onupgradeneeded = () => open.result.createObjectStore('drafts');
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        const tx = open.result.transaction('drafts', 'readwrite');
+        tx.objectStore('drafts').put({ version: 1, templateId: 'nowPlaying', title: 'My saved song', artist: 'My artist', imageBytes, background: '#abcdef', crop: { zoom: 2, x: 0.3, y: 0.7 } }, 'latest');
+        tx.oncomplete = () => { open.result.close(); resolve(); }; tx.onerror = () => reject(tx.error);
+      };
+    });
+  });
+  await page.goto('/');
+  await expect(page.locator('#template')).toHaveValue('custom');
+  await expect(page.locator('#player-background-mode')).toHaveValue('photo');
+  await expect(page.locator('#title')).toHaveValue('My saved song');
+  await expect(page.locator('#artist')).toHaveValue('My artist');
+  await expect(page.locator('#zoom')).toHaveValue('2');
+  await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
+});

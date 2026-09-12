@@ -19,7 +19,7 @@ test('Polaroid template keeps manual colors editable, keeps its paper fixed whit
   await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
 
   await page.getByLabel('เลือกรูปแบบเทมเพลต').selectOption('polaroid');
-  await expect(page.getByText('03 / โพลารอยด์')).toBeVisible();
+  await expect(page.getByText('02 / โพลารอยด์')).toBeVisible();
   // Unlike Now Playing, colors stay manually editable — the customization the Polaroid template adds.
   await expect(page.locator('#background')).toBeVisible();
   await expect(page.locator('.swatches')).toBeVisible();
@@ -56,8 +56,8 @@ test('Polaroid progress bar and pause icon are on by default and can be toggled 
   await page.goto('/');
   await expect(page.getByLabel('รุ่น iPhone', { exact: true })).toBeEnabled();
 
-  // These toggles are Polaroid-specific — not shown for the other templates.
-  await expect(page.getByText('แสดงแถบเวลาเพลง')).toHaveCount(0);
+  // The player has its own progress setting inside a collapsed appearance group.
+  await expect(page.getByRole('switch', { name: 'แสดงแถบเวลาเพลง' })).toHaveCount(0);
   await expect(page.getByText('แสดงไอคอนเล่น/หยุด')).toHaveCount(0);
 
   await page.getByLabel('เลือกรูปแบบเทมเพลต').selectOption('polaroid');

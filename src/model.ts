@@ -1,7 +1,8 @@
 import { createAlbumCover, restoreAlbumCover, type AlbumCover } from './albumCover';
+import { createPlayerSettings, restorePlayerSettings, type PlayerSettings } from './musicPlayer';
 
 export type Crop = { zoom: number; x: number; y: number };
-export type TemplateId = 'custom' | 'nowPlaying' | 'polaroid' | 'albumCover';
+export type TemplateId = 'custom' | 'polaroid' | 'albumCover';
 export type Draft = {
   version: 1;
   templateId: TemplateId;
@@ -22,6 +23,7 @@ export type Draft = {
   crop: Crop;
   image: Blob | null;
   albumCover: AlbumCover;
+  player: PlayerSettings;
 };
 
 export const initialCrop: Crop = { zoom: 1, x: 0.5, y: 0.5 };
@@ -30,11 +32,11 @@ export const initialDraft: Draft = {
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
   showGuides: true, showProgress: true, showPauseGlyph: true, background: '#f3f1ec', foreground: null,
   palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
-  crop: initialCrop, image: null, albumCover: createAlbumCover(),
+  crop: initialCrop, image: null, albumCover: createAlbumCover(), player: createPlayerSettings(),
 };
 
 // Fixed light/dark text colors used whenever a template needs guaranteed contrast
-// instead of a user-chosen foreground (see automaticForeground and the nowPlaying template).
+// instead of a user-chosen foreground (see automaticForeground and playerColors).
 export const lightText = '#faf9f6';
 export const darkText = '#232927';
 
@@ -82,7 +84,7 @@ export function automaticForeground(background: string) {
   return (luminance(lightText) + 0.05) / (backdrop + 0.05) > (backdrop + 0.05) / (luminance(darkText) + 0.05) ? lightText : darkText;
 }
 
-// Two darkest colors of the extracted palette, used as the nowPlaying gradient's base tones.
+// Two darkest colors of the extracted palette, used by the player's photo-derived background.
 export function darkestColors(palette: string[]): [string, string] {
   const sorted = [...palette].sort((a, b) => luminance(a) - luminance(b));
   const first = sorted[0] ?? darkText;
@@ -113,11 +115,23 @@ export function cropRect(width: number, height: number, crop: Crop) {
   return { x: (width - size) * clamp(crop.x), y: (height - size) * clamp(crop.y), size };
 }
 
+export function playerColors(draft: Draft) {
+  const settings = draft.player;
+  const [first, second] = darkestColors(draft.palette);
+  const start = settings.backgroundMode === 'photo' ? mixWithBlack(darkenForContrast(second, 0.09), settings.darkness / 100) : draft.background;
+  const end = settings.backgroundMode === 'photo' ? mixWithBlack(darkenForContrast(first, 0.035), settings.darkness / 100) : settings.backgroundMode === 'gradient' ? settings.gradientEnd : start;
+  const contrast = (ink: string, background: string) => (Math.max(luminance(ink), luminance(background)) + 0.05) / (Math.min(luminance(ink), luminance(background)) + 0.05);
+  const score = (ink: string) => Math.min(contrast(ink, start), contrast(ink, end));
+  return { start, end, foreground: settings.foreground ?? (score(lightText) > score(darkText) ? lightText : darkText) };
+}
+
 export function restoreDraft(value: unknown): Draft {
   if (!value || typeof value !== 'object' || !('version' in value) || value.version !== 1) return initialDraft;
   const saved = value as Partial<Draft>;
   const restored = { ...initialDraft };
-  restored.templateId = saved.templateId === 'nowPlaying' || saved.templateId === 'polaroid' || saved.templateId === 'albumCover' ? saved.templateId : 'custom';
+  const legacyDark = 'templateId' in value && value.templateId === 'nowPlaying';
+  restored.templateId = saved.templateId === 'polaroid' || saved.templateId === 'albumCover' ? saved.templateId : 'custom';
+  restored.player = restorePlayerSettings(saved.player, legacyDark ? 'dark' : 'classic');
   restored.albumCover = restoreAlbumCover(saved.albumCover);
   for (const key of ['device', 'title', 'artist', 'elapsed', 'duration', 'credit'] as const) {
     if (typeof saved[key] === 'string') restored[key] = saved[key].slice(0, 180);
@@ -128,6 +142,7 @@ export function restoreDraft(value: unknown): Draft {
   const color = (candidate: unknown): candidate is string => typeof candidate === 'string' && /^#[0-9a-f]{6}$/i.test(candidate);
   if (color(saved.background)) restored.background = saved.background;
   if (color(saved.foreground)) restored.foreground = saved.foreground;
+  if (!saved.player && !legacyDark && color(saved.foreground)) restored.player.foreground = saved.foreground;
   if (Array.isArray(saved.palette) && saved.palette.length === 5 && saved.palette.every(color)) restored.palette = saved.palette;
   if (saved.crop && [saved.crop.zoom, saved.crop.x, saved.crop.y].every(Number.isFinite)) {
     restored.crop = { zoom: clamp(saved.crop.zoom, 1, 4), x: clamp(saved.crop.x), y: clamp(saved.crop.y) };

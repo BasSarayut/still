@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 import { ArrowDownToLine, ArrowUpRight, Check, CheckCheck, ChevronDown, CircleHelp, ImagePlus, LayoutTemplate, LoaderCircle, LockKeyhole, Minus, Music2, Plus, RotateCcw, Share2, ShieldCheck, Smartphone, X } from 'lucide-react';
 import { devices, getDevice } from './devices';
-import { automaticForeground, initialCrop, initialDraft, validTimes, type Draft, type TemplateId } from './model';
+import { automaticForeground, initialCrop, initialDraft, playerColors, validTimes, type Draft, type TemplateId } from './model';
 import { canvasBlob, decodeImage, importImage } from './images';
 import { loadDraft, saveDraft } from './storage';
 import { prepareFonts, renderWallpaper } from './renderer';
 import Preview from './Preview';
 import AlbumCoverEditor from './AlbumCoverEditor';
+import PlayerEditor, { PlayerBackground, PlayerPresets } from './PlayerEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
@@ -17,11 +18,10 @@ function Section({ number, title, children, extra }: { number: string; title: st
   return <section className="control-section"><div className="section-heading"><h2><span>{number}</span>{title}</h2>{extra}</div>{children}</section>;
 }
 
-const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templateNowPlaying' | 'templatePolaroid' | 'templateAlbumCover' }[] = [
+const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templatePolaroid' | 'templateAlbumCover' }[] = [
   { id: 'custom', number: '01', badge: 'THE MUSIC PLAYER', labelKey: 'template' },
-  { id: 'nowPlaying', number: '02', badge: 'NOW PLAYING', labelKey: 'templateNowPlaying' },
-  { id: 'polaroid', number: '03', badge: 'POLAROID', labelKey: 'templatePolaroid' },
-  { id: 'albumCover', number: '04', badge: 'ALBUM COVER', labelKey: 'templateAlbumCover' },
+  { id: 'polaroid', number: '02', badge: 'POLAROID', labelKey: 'templatePolaroid' },
+  { id: 'albumCover', number: '03', badge: 'ALBUM COVER', labelKey: 'templateAlbumCover' },
 ];
 
 export default function App() {
@@ -41,10 +41,14 @@ export default function App() {
   const revision = useRef(0);
   const importRevision = useRef(0);
   const isCover = draft.templateId === 'albumCover';
+  const isPlayer = draft.templateId === 'custom';
+  const autoBackground = isPlayer && draft.player.backgroundMode === 'photo';
   const isSquare = isCover && draft.albumCover.format === 'square';
   const device = isSquare ? { name: 'album-cover', width: 2400, height: 2400, source: '' } : getDevice(draft.device);
-  const timeValid = isCover || validTimes(draft.elapsed, draft.duration);
-  const foreground = draft.foreground ?? automaticForeground(draft.background);
+  const timeValid = isCover || (isPlayer && !draft.player.showProgress) || validTimes(draft.elapsed, draft.duration);
+  const foreground = isPlayer ? playerColors(draft).foreground : draft.foreground ?? automaticForeground(draft.background);
+  const customForeground = isPlayer ? draft.player.foreground : draft.foreground;
+  const updateForeground = (foreground: string | null) => update(isPlayer ? { player: { ...draft.player, foreground } } : { foreground });
   const template = TEMPLATES.find(item => item.id === draft.templateId) ?? TEMPLATES[0];
   latest.current = draft;
 
@@ -160,7 +164,7 @@ export default function App() {
       <div className="workspace">
         <div className="workspace-heading"><div><span className="eyebrow">{copy.studio}</span><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div><span className="template-badge"><Music2 size={13} /> {template.badge} <span>{template.number}</span></span></div>
         <div className="preview-toolbar" id="preview"><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
-        <div className={`preview-stage ${isSquare ? 'square-stage' : ''}`}>
+        <div className={`preview-stage ${isSquare ? 'square-stage' : ''}`} style={{ '--preview-ratio': device.width / device.height } as CSSProperties}>
           <div className="side-note">{copy.sideNote}</div>
           <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
           <div className="stage-caption"><span>{template.number} / {copy[template.labelKey]}</span><span>{copy.makeYours}</span></div>
@@ -176,6 +180,7 @@ export default function App() {
           <Section number="01" title={copy.templateSectionTitle}>
             <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
             <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
+            {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
           </Section>
 
           <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
@@ -207,13 +212,15 @@ export default function App() {
             {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
             {draft.templateId === 'polaroid' && <><Toggle checked={draft.showProgress} onChange={showProgress => update({ showProgress })}>{copy.showProgress}</Toggle>
             <Toggle checked={draft.showPauseGlyph} onChange={showPauseGlyph => update({ showPauseGlyph })}>{copy.showPauseGlyph}</Toggle></>}
+            {isPlayer && <PlayerEditor value={draft.player} copy={copy} ink={foreground} onChange={player => update({ player })} />}
           </Section>}
 
-          <Section number="05" title={copy.colors} extra={draft.templateId !== 'nowPlaying' && <span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
-            {draft.templateId !== 'nowPlaying' && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
+          <Section number="05" title={copy.colors} extra={<span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
+            {isPlayer && <PlayerBackground value={draft.player} copy={copy} onChange={player => update({ player })} />}
+            {!autoBackground && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
             <div className="color-row"><label htmlFor="background">{copy.background}</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
-            <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div></>}
-            {draft.templateId === 'nowPlaying' && <p className="field-hint">{copy.colorsAutoHint}</p>}
+            </>}
+            <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${customForeground === null ? 'active' : ''}`} aria-pressed={customForeground === null} onClick={() => updateForeground(null)}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => updateForeground(event.target.value)} /></div>
             {draft.templateId === 'polaroid' && <p className="field-hint">{copy.colorsPolaroidHint}</p>}
             {!isCover && <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>}
           </Section>

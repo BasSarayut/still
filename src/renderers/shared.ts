@@ -14,6 +14,10 @@ export async function prepareFonts(draft: Draft) {
       fonts.push(document.fonts.load(`${item.italic ? 'italic ' : ''}${item.weight} ${item.size}px ${coverFonts[item.font]}`, item.text));
     }
   }
+  if (draft.templateId === 'custom') {
+    fonts.push(document.fonts.load(`${draft.player.titleWeight} ${draft.player.titleSize}px ${coverFonts[draft.player.titleFont]}`, draft.title));
+    fonts.push(document.fonts.load(`${draft.player.artistWeight} ${draft.player.artistSize}px ${coverFonts[draft.player.artistFont]}`, draft.artist));
+  }
   await Promise.all(fonts);
   await document.fonts.ready;
 }

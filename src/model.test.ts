@@ -68,7 +68,7 @@ describe('colors and saved drafts', () => {
   it('defaults drafts saved before templates existed to the custom template, keeping old work unchanged', () => {
     expect(restoreDraft({ version: 1 }).templateId).toBe('custom');
     expect(restoreDraft({ version: 1, templateId: 'not-a-template' }).templateId).toBe('custom');
-    expect(restoreDraft({ version: 1, templateId: 'nowPlaying' }).templateId).toBe('nowPlaying');
+    expect(restoreDraft({ version: 1, templateId: 'nowPlaying' })).toMatchObject({ templateId: 'custom', player: { backgroundMode: 'photo', glyph: 'pause', timeDisplay: 'remaining' } });
     expect(restoreDraft({ version: 1, templateId: 'polaroid' }).templateId).toBe('polaroid');
   });
 });
