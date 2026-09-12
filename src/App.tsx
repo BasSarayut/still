@@ -6,6 +6,7 @@ import { canvasBlob, decodeImage, importImage } from './images';
 import { loadDraft, saveDraft } from './storage';
 import { prepareFonts, renderWallpaper } from './renderer';
 import Preview from './Preview';
+import AlbumCoverEditor from './AlbumCoverEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
@@ -16,10 +17,11 @@ function Section({ number, title, children, extra }: { number: string; title: st
   return <section className="control-section"><div className="section-heading"><h2><span>{number}</span>{title}</h2>{extra}</div>{children}</section>;
 }
 
-const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templateNowPlaying' | 'templatePolaroid' }[] = [
+const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templateNowPlaying' | 'templatePolaroid' | 'templateAlbumCover' }[] = [
   { id: 'custom', number: '01', badge: 'THE MUSIC PLAYER', labelKey: 'template' },
   { id: 'nowPlaying', number: '02', badge: 'NOW PLAYING', labelKey: 'templateNowPlaying' },
   { id: 'polaroid', number: '03', badge: 'POLAROID', labelKey: 'templatePolaroid' },
+  { id: 'albumCover', number: '04', badge: 'ALBUM COVER', labelKey: 'templateAlbumCover' },
 ];
 
 export default function App() {
@@ -38,8 +40,10 @@ export default function App() {
   const latest = useRef(draft);
   const revision = useRef(0);
   const importRevision = useRef(0);
-  const device = getDevice(draft.device);
-  const timeValid = validTimes(draft.elapsed, draft.duration);
+  const isCover = draft.templateId === 'albumCover';
+  const isSquare = isCover && draft.albumCover.format === 'square';
+  const device = isSquare ? { name: 'album-cover', width: 2400, height: 2400, source: '' } : getDevice(draft.device);
+  const timeValid = isCover || validTimes(draft.elapsed, draft.duration);
   const foreground = draft.foreground ?? automaticForeground(draft.background);
   const template = TEMPLATES.find(item => item.id === draft.templateId) ?? TEMPLATES[0];
   latest.current = draft;
@@ -156,12 +160,12 @@ export default function App() {
       <div className="workspace">
         <div className="workspace-heading"><div><span className="eyebrow">{copy.studio}</span><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div><span className="template-badge"><Music2 size={13} /> {template.badge} <span>{template.number}</span></span></div>
         <div className="preview-toolbar" id="preview"><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
-        <div className="preview-stage">
+        <div className={`preview-stage ${isSquare ? 'square-stage' : ''}`}>
           <div className="side-note">{copy.sideNote}</div>
           <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
           <div className="stage-caption"><span>{template.number} / {copy[template.labelKey]}</span><span>{copy.makeYours}</span></div>
         </div>
-        <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> {copy.guides}</Toggle><span>{copy.guidesNote}</span></div>
+        {!isSquare && <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> {copy.guides}</Toggle><span>{copy.guidesNote}</span></div>}
         <p className="privacy-note"><ShieldCheck size={13} /> {copy.privacy}</p>
       </div>
 
@@ -174,10 +178,11 @@ export default function App() {
             <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
           </Section>
 
-          <Section number="02" title={copy.screen}>
-            <label className="sr-only" htmlFor="device">{copy.device}</label>
+          <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
+            {isCover && <><label className="sr-only" htmlFor="cover-format">{copy.coverFormat}</label><select id="cover-format" value={draft.albumCover.format} onChange={event => update({ albumCover: { ...draft.albumCover, format: event.target.value as 'square' | 'phone' } })}><option value="square">{copy.coverSquare}</option><option value="phone">{copy.coverPhone}</option></select></>}
+            {!isSquare && <><label className="sr-only" htmlFor="device">{copy.device}</label>
             <div className="select-wrap"><Smartphone size={16} /><select id="device" value={device.name} onChange={event => update({ device: event.target.value })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
-            <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div>
+            <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div></>}
           </Section>
 
           <Section number="03" title={copy.photo} extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>{copy.removePhoto}</button>}>
@@ -191,14 +196,18 @@ export default function App() {
             {image && <div className="crop-controls"><div className="zoom-heading"><label htmlFor="zoom">{copy.zoom}</label><span>{draft.crop.zoom.toFixed(2)}×</span><button className="text-button" onClick={() => update({ crop: initialCrop })}><RotateCcw size={12} /> {copy.center}</button></div><div className="range-row"><Minus size={13} /><input id="zoom" type="range" min="1" max="4" step="0.01" value={draft.crop.zoom} onChange={event => update({ crop: { ...draft.crop, zoom: Number(event.target.value) } })} /><Plus size={13} /></div><p className="field-hint">{copy.cropHint}</p></div>}
           </Section>
 
-          <Section number="04" title={copy.music}>
+          {isCover ? <Section number="04" title={copy.coverLayout}>
+            <div className="zoom-heading"><label htmlFor="cover-split">{copy.coverSplit}</label><span>{draft.albumCover.split}%</span></div>
+            <input id="cover-split" type="range" min="20" max="80" step="1" value={draft.albumCover.split} onChange={event => update({ albumCover: { ...draft.albumCover, split: Number(event.target.value) } })} />
+            <p className="field-hint">{copy.coverLayoutHint}</p>
+          </Section> : <Section number="04" title={copy.music}>
             <label className="field-label" htmlFor="title">{copy.title}</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder={copy.titlePlaceholder} />
             <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
             <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
             {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
             {draft.templateId === 'polaroid' && <><Toggle checked={draft.showProgress} onChange={showProgress => update({ showProgress })}>{copy.showProgress}</Toggle>
             <Toggle checked={draft.showPauseGlyph} onChange={showPauseGlyph => update({ showPauseGlyph })}>{copy.showPauseGlyph}</Toggle></>}
-          </Section>
+          </Section>}
 
           <Section number="05" title={copy.colors} extra={draft.templateId !== 'nowPlaying' && <span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
             {draft.templateId !== 'nowPlaying' && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
@@ -206,13 +215,13 @@ export default function App() {
             <div className="color-row"><label htmlFor="foreground">{copy.foreground}</label><button className={`auto-button ${draft.foreground === null ? 'active' : ''}`} aria-pressed={draft.foreground === null} onClick={() => update({ foreground: null })}>{copy.automatic}</button><input id="foreground" type="color" value={foreground} onChange={event => update({ foreground: event.target.value })} /></div></>}
             {draft.templateId === 'nowPlaying' && <p className="field-hint">{copy.colorsAutoHint}</p>}
             {draft.templateId === 'polaroid' && <p className="field-hint">{copy.colorsPolaroidHint}</p>}
-            <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>
+            {!isCover && <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>}
           </Section>
 
-          <Section number="06" title={copy.signature}>
+          {isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} onChange={albumCover => update({ albumCover })} /></Section> : <Section number="06" title={copy.signature}>
             <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
             {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
-          </Section>
+          </Section>}
         </fieldset>
         <div className="export-area">
           {error && <div className="error-message" role="alert">{copy[error]}<button className="icon-button" aria-label={copy.dismissError} onClick={() => setError(null)}><X size={15} /></button></div>}

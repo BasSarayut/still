@@ -1,13 +1,19 @@
 import type { Draft } from '../model';
+import { coverFonts } from '../albumCover';
 
 export const fontFamily = '-apple-system, BlinkMacSystemFont, "Helvetica Neue", "Noto Sans Thai Variable", "Noto Sans JP Variable", sans-serif';
 export const composition = (height: number) => ({ left: 33, top: height * 0.255, size: 404 });
 
 export async function prepareFonts(draft: Draft) {
-  const text = `${draft.title} ${draft.artist} ${draft.credit}`;
+  const text = `${draft.title} ${draft.artist} ${draft.credit} ${draft.templateId === 'albumCover' ? draft.albumCover.texts.map(item => item.text).join(' ') : ''}`;
   const fonts: Promise<FontFace[]>[] = [];
   if (/[\u0E00-\u0E7F]/.test(text)) fonts.push(document.fonts.load('650 25px "Noto Sans Thai Variable"', text));
   if (/[\u3000-\u9FFF\uFF00-\uFFEF]/.test(text)) fonts.push(document.fonts.load('650 25px "Noto Sans JP Variable"', text));
+  if (draft.templateId === 'albumCover') {
+    for (const item of draft.albumCover.texts.filter(item => item.visible && item.text)) {
+      fonts.push(document.fonts.load(`${item.italic ? 'italic ' : ''}${item.weight} ${item.size}px ${coverFonts[item.font]}`, item.text));
+    }
+  }
   await Promise.all(fonts);
   await document.fonts.ready;
 }
