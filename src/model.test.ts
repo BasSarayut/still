@@ -61,10 +61,15 @@ describe('colors and saved drafts', () => {
     expect(draft.palette).toEqual(initialDraft.palette);
     expect(draft.crop).toEqual({ zoom: 4, x: 0, y: 1 });
   });
+  it('restores the Polaroid progress/pause visibility toggles, defaulting old drafts to both on', () => {
+    expect(restoreDraft({ version: 1 })).toMatchObject({ showProgress: true, showPauseGlyph: true });
+    expect(restoreDraft({ version: 1, showProgress: false, showPauseGlyph: false })).toMatchObject({ showProgress: false, showPauseGlyph: false });
+  });
   it('defaults drafts saved before templates existed to the custom template, keeping old work unchanged', () => {
     expect(restoreDraft({ version: 1 }).templateId).toBe('custom');
     expect(restoreDraft({ version: 1, templateId: 'not-a-template' }).templateId).toBe('custom');
     expect(restoreDraft({ version: 1, templateId: 'nowPlaying' }).templateId).toBe('nowPlaying');
+    expect(restoreDraft({ version: 1, templateId: 'polaroid' }).templateId).toBe('polaroid');
   });
 });
 

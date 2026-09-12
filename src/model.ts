@@ -1,5 +1,5 @@
 export type Crop = { zoom: number; x: number; y: number };
-export type TemplateId = 'custom' | 'nowPlaying';
+export type TemplateId = 'custom' | 'nowPlaying' | 'polaroid';
 export type Draft = {
   version: 1;
   templateId: TemplateId;
@@ -12,6 +12,8 @@ export type Draft = {
   showCredit: boolean;
   showPalette: boolean;
   showGuides: boolean;
+  showProgress: boolean;
+  showPauseGlyph: boolean;
   background: string;
   foreground: string | null;
   palette: string[];
@@ -23,7 +25,7 @@ export const initialCrop: Crop = { zoom: 1, x: 0.5, y: 0.5 };
 export const initialDraft: Draft = {
   version: 1, templateId: 'custom', device: 'iPhone 16', title: 'เพลงโปรดของคุณ', artist: 'Your favorite artist',
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
-  showGuides: true, background: '#f3f1ec', foreground: null,
+  showGuides: true, showProgress: true, showPauseGlyph: true, background: '#f3f1ec', foreground: null,
   palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
   crop: initialCrop, image: null,
 };
@@ -112,11 +114,11 @@ export function restoreDraft(value: unknown): Draft {
   if (!value || typeof value !== 'object' || !('version' in value) || value.version !== 1) return initialDraft;
   const saved = value as Partial<Draft>;
   const restored = { ...initialDraft };
-  restored.templateId = saved.templateId === 'nowPlaying' ? 'nowPlaying' : 'custom';
+  restored.templateId = saved.templateId === 'nowPlaying' || saved.templateId === 'polaroid' ? saved.templateId : 'custom';
   for (const key of ['device', 'title', 'artist', 'elapsed', 'duration', 'credit'] as const) {
     if (typeof saved[key] === 'string') restored[key] = saved[key].slice(0, 180);
   }
-  for (const key of ['showCredit', 'showPalette', 'showGuides'] as const) {
+  for (const key of ['showCredit', 'showPalette', 'showGuides', 'showProgress', 'showPauseGlyph'] as const) {
     if (typeof saved[key] === 'boolean') restored[key] = saved[key];
   }
   const color = (candidate: unknown): candidate is string => typeof candidate === 'string' && /^#[0-9a-f]{6}$/i.test(candidate);
