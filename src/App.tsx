@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
-import { ArrowDownToLine, ArrowUpRight, Check, CheckCheck, ChevronDown, CircleHelp, ImagePlus, LayoutTemplate, LoaderCircle, LockKeyhole, Minus, Music2, Plus, RotateCcw, Share2, ShieldCheck, Smartphone, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, Check, CheckCheck, ChevronDown, CircleHelp, Eye, ImagePlus, LayoutTemplate, LoaderCircle, LockKeyhole, Minus, PencilLine, Plus, RotateCcw, Share2, ShieldCheck, Smartphone, X } from 'lucide-react';
 import { devices, getDevice } from './devices';
 import { automaticForeground, initialCrop, initialDraft, playerColors, validTimes, type Draft, type TemplateId } from './model';
 import { canvasBlob, decodeImage, importImage } from './images';
@@ -17,7 +17,7 @@ function Toggle({ checked, onChange, children, disabled = false }: { checked: bo
 }
 
 function Section({ number, title, children, extra }: { number: string; title: string; children: ReactNode; extra?: ReactNode }) {
-  return <section className="control-section"><div className="section-heading"><h2><span>{number}</span>{title}</h2>{extra}</div>{children}</section>;
+  return <section className="control-section" aria-labelledby={`section-${number}`}><div className="section-heading"><h2 id={`section-${number}`} tabIndex={-1}>{title}</h2>{extra}</div>{children}</section>;
 }
 
 const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templatePolaroid' | 'templateAlbumCover' | 'templateConcertTicket' }[] = [
@@ -39,6 +39,11 @@ export default function App() {
   const [download, setDownload] = useState<{ url: string; file: File } | null>(null);
   const [help, setHelp] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(true);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLElement>(null);
+  const returnPosition = useRef<number | null>(null);
+  const lastEditorFocus = useRef<HTMLElement | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const latest = useRef(draft);
   const revision = useRef(0);
@@ -98,6 +103,29 @@ export default function App() {
   }, [ready]);
 
   useEffect(() => () => { if (download) URL.revokeObjectURL(download.url); }, [download]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => setPreviewVisible(entry.isIntersecting));
+    const stage = workspaceRef.current?.querySelector('.preview-stage');
+    if (stage) observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+
+  function switchWorkspace() {
+    if (previewVisible) {
+      if (returnPosition.current !== null) {
+        window.scrollTo({ top: returnPosition.current, behavior: 'instant' });
+        if (lastEditorFocus.current?.isConnected) lastEditorFocus.current.focus({ preventScroll: true });
+      } else {
+        editorRef.current?.scrollIntoView({ block: 'start' });
+        document.getElementById('editor-heading')?.focus({ preventScroll: true });
+      }
+    } else {
+      returnPosition.current = window.scrollY;
+      workspaceRef.current?.scrollIntoView({ block: 'start' });
+      document.getElementById('preview')?.focus({ preventScroll: true });
+    }
+  }
 
   function update(patch: Partial<Draft>) {
     revision.current++;
@@ -167,11 +195,10 @@ export default function App() {
     </aside>}
 
     <main id="main" className="studio">
-      <div className="workspace">
-        <div className="workspace-heading"><div><span className="eyebrow">{copy.studio}</span><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div><span className="template-badge"><Music2 size={13} /> {template.badge} <span>{template.number}</span></span></div>
-        <div className="preview-toolbar" id="preview"><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
+      <div className="workspace" ref={workspaceRef}>
+        <div className="workspace-heading"><div><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div></div>
+        <div className="preview-toolbar" id="preview" tabIndex={-1}><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
         <div className={`preview-stage ${isSquare ? 'square-stage' : ''}`} style={{ '--preview-ratio': device.width / device.height } as CSSProperties}>
-          <div className="side-note">{copy.sideNote}</div>
           <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
           <div className="stage-caption"><span>{template.number} / {copy[template.labelKey]}</span><span>{copy.makeYours}</span></div>
         </div>
@@ -179,10 +206,18 @@ export default function App() {
         <p className="privacy-note"><ShieldCheck size={13} /> {copy.privacy}</p>
       </div>
 
-      <aside className="inspector" aria-label={copy.editorLabel}>
-        <div className="inspector-heading"><div><span className="eyebrow">{copy.personal}</span><h2>{copy.editor}</h2></div><span className="tiny-music"><Music2 size={20} /></span></div>
+      <aside className="inspector" id="editor" ref={editorRef} aria-label={copy.editorLabel}>
+        <div className="inspector-heading"><h2 id="editor-heading" tabIndex={-1}>{copy.editor}</h2><PencilLine size={20} aria-hidden="true" /></div>
         <div className="save-status" role="status"><CheckCheck size={13} />{copy[saveStatus]}</div>
-        <fieldset disabled={!ready || busy || exporting} className="editor-fields">
+        <nav className="editor-nav" aria-label={copy.editorNavigation}>
+          {[copy.navTemplate, copy.navSize, copy.navPhoto, isCover ? copy.navLayout : copy.navContent, copy.navColors, isCover ? copy.navContent : copy.navDetails].map((label, index) => <a key={index} href={`#section-0${index + 1}`} onClick={event => {
+            event.preventDefault();
+            const heading = document.getElementById(`section-0${index + 1}`);
+            heading?.focus({ preventScroll: true });
+            heading?.scrollIntoView({ block: 'start' });
+          }}>{label}</a>)}
+        </nav>
+        <fieldset disabled={!ready || busy || exporting} className="editor-fields" onFocusCapture={event => { lastEditorFocus.current = event.target; }}>
           <Section number="01" title={copy.templateSectionTitle}>
             <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
             <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
@@ -247,7 +282,7 @@ export default function App() {
         <div className="export-area">
           {error && <div className="error-message" role="alert">{copy[error]}<button className="icon-button" aria-label={copy.dismissError} onClick={() => setError(null)}><X size={15} /></button></div>}
           {download && <div className="download-result" role="status"><strong><Check size={15} /> {copy.pngReady}</strong><p>{copy.downloadRetry} <a href={download.url} download={download.file.name}>{copy.saveAgain}</a></p>{navigator.canShare?.({ files: [download.file] }) && <button className="share-button" onClick={() => void sharePng()}><Share2 size={15} /> {copy.share}</button>}</div>}
-          <div className="export-actions"><a className="jump-preview" href="#preview">{copy.viewPreview}</a><button className="export-button" disabled={!ready || (!image && photoRequired) || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}<span>↗</span></button></div>
+          <div className="export-actions"><button className="jump-preview" onClick={switchWorkspace}>{previewVisible ? <PencilLine size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}{previewVisible ? copy.backToEditor : copy.viewPreview}</button><button className="export-button" disabled={!ready || (!image && photoRequired) || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}</button></div>
           <p className="export-note">{!image && photoRequired ? copy.startHint : !image ? copy.ticketNoPhotoHint : `${device.width} × ${device.height} px · ${copy.noWatermark}`}</p>
         </div>
       </aside>

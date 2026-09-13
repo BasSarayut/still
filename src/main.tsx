@@ -4,5 +4,6 @@ import App from './App';
 import '@fontsource-variable/noto-sans-thai';
 import '@fontsource-variable/noto-sans-jp';
 import './styles.css';
+import './studio.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
