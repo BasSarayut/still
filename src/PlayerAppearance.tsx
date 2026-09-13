@@ -1,4 +1,4 @@
-import { coverFonts } from './albumCover';
+import { coverFontLabels, coverFonts } from './albumCover';
 import { createPlayerSettings, type PlayerSettings } from './musicPlayer';
 import type { Messages } from './i18n';
 import './playerVariations.css';
@@ -45,7 +45,7 @@ export function PlayerNoteControls(props: Props) {
       {value.layout === 'lyrics' && <>
         <label className="field-label" htmlFor="player-lyrics">{copy.playerLyricText}</label><textarea id="player-lyrics" rows={4} maxLength={400} value={value.lyrics} placeholder={copy.playerLyricPlaceholder} onChange={event => update({ lyrics: event.target.value })} />
         <p className="field-hint">{copy.playerLyricHint}</p>
-        {select('lyricFont', copy.playerLyricFont, Object.keys(coverFonts).map(key => [key, ({ sans: 'Sans · Arial', serif: 'Serif · Georgia', mono: 'Mono · Courier', thai: 'Noto Sans Thai', japanese: 'Noto Sans JP' })[key as keyof typeof coverFonts]]))}
+        {select('lyricFont', copy.playerLyricFont, Object.keys(coverFonts).map(key => [key, coverFontLabels[key as keyof typeof coverFonts]]))}
         {range('lyricSize', copy.playerLyricSize, 20, 44)}{range('lyricHighlight', copy.playerLyricHighlight, 1, 4)}{range('lyricOpacity', copy.playerLyricOpacity, 10, 80, '%')}
       </>}
       {reset(['showExtra', 'lyricFont', 'lyricSize', 'lyricHighlight', 'lyricOpacity'])}

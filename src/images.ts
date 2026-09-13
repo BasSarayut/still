@@ -31,10 +31,17 @@ export async function importImage(file: File) {
   const blob = await canvasBlob(canvas);
   const image = await decodeImage(blob);
   canvas.width = canvas.height = 1;
-  return { blob, image, palette: extractPalette(image) };
+  const { palette, paletteByFrequency } = extractPalette(image);
+  return { blob, image, palette, paletteByFrequency };
 }
 
-export function extractPalette(image: HTMLImageElement) {
+const PALETTE_SIZE = 6;
+
+// Extracts up to PALETTE_SIZE representative colors from the photo. `palette` is sorted dark to
+// light (used for background swatches and photo-derived text contrast elsewhere); `paletteByFrequency`
+// keeps the same colors ordered by how common they are in the photo, most dominant first — the
+// decorative palette widget uses this to pick and order which colors it shows.
+export function extractPalette(image: HTMLImageElement): { palette: string[]; paletteByFrequency: string[] } {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 64;
   const context = canvas.getContext('2d', { willReadFrequently: true })!;
@@ -55,13 +62,13 @@ export function extractPalette(image: HTMLImageElement) {
   const selected: number[][] = [];
   for (const candidate of candidates) {
     if (selected.every(existing => Math.hypot(...candidate.map((channel, index) => channel - existing[index])) > 48)) selected.push(candidate);
-    if (selected.length === 5) break;
+    if (selected.length === PALETTE_SIZE) break;
   }
   const base = selected[0] ?? [128, 128, 128];
-  while (selected.length < 5) {
-    const factor = (selected.length + 1) / 6;
+  while (selected.length < PALETTE_SIZE) {
+    const factor = (selected.length + 1) / (PALETTE_SIZE + 1);
     selected.push(base.map(channel => Math.round(channel + (255 - channel) * factor)));
   }
-  return selected.map(channels => '#' + channels.map(channel => channel.toString(16).padStart(2, '0')).join(''))
-    .sort((first, second) => luminance(first) - luminance(second));
+  const hexColors = selected.map(channels => '#' + channels.map(channel => channel.toString(16).padStart(2, '0')).join(''));
+  return { paletteByFrequency: hexColors, palette: [...hexColors].sort((first, second) => luminance(first) - luminance(second)) };
 }

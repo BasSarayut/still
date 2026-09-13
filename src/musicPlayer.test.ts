@@ -22,6 +22,12 @@ describe('unified player migration', () => {
     const settings = { ...createPlayerSettings('minimal'), titleFont: 'thai' as const, artistColor: '#123456', controlsScale: 0.75 };
     expect(restorePlayerSettings(settings)).toEqual(settings);
   });
+  it('bounds corrupt saved palette settings, falling back to the preset default style', () => {
+    const restored = restorePlayerSettings({ paletteStyle: 'sparkles', paletteOrder: 'random', paletteCount: 99, paletteSize: 5, paletteGap: 500 }, 'minimal');
+    expect(restored).toMatchObject({ paletteStyle: 'dots', paletteOrder: 'frequency', paletteCount: 6, paletteSize: 60, paletteGap: 160 });
+    const valid = { ...createPlayerSettings(), paletteStyle: 'necklace' as const, paletteOrder: 'hue' as const, paletteCount: 3, paletteSize: 130, paletteGap: 70 };
+    expect(restorePlayerSettings(valid)).toEqual(valid);
+  });
 });
 
 describe('player layout and colors', () => {
@@ -36,6 +42,16 @@ describe('player layout and colors', () => {
       expect(layout.timeline).toBeGreaterThan(layout.artist + settings.artistSize);
       expect(layout.left).toBeGreaterThanOrEqual(0);
       expect(layout.left + layout.size).toBeLessThanOrEqual(470);
+    }
+  });
+  it('still leaves room for every palette style at maximum count, size and spacing', () => {
+    const styles = ['strip', 'dots', 'gradient', 'ribbon', 'necklace', 'numbered', 'hero'] as const;
+    for (const device of devices) for (const paletteStyle of styles) {
+      const height = device.height / device.width * 470;
+      const settings = { ...createPlayerSettings(), paletteStyle, paletteCount: 6, paletteSize: 160, paletteGap: 160 };
+      const layout = playerLayout(height, settings, true);
+      expect(layout.top).toBeGreaterThanOrEqual(24);
+      expect(layout.bottom).toBeLessThanOrEqual(height - 100 + 0.001);
     }
   });
   it('keeps the dark preset dark even with a bright image, but allows manual ink', () => {

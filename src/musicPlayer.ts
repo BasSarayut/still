@@ -1,4 +1,5 @@
 import { coverFonts } from './albumCover';
+import { createPaletteSettings, paletteFootprint, restorePaletteSettings, type PaletteSettings } from './palette';
 
 export type PlayerSettings = {
   backgroundMode: 'solid' | 'gradient' | 'photo' | 'ambient';
@@ -40,8 +41,7 @@ export type PlayerSettings = {
   buttonStyle: 'circle' | 'plain';
   controlsScale: number;
   showFavorite: boolean;
-  paletteStyle: 'strip' | 'dots';
-};
+} & PaletteSettings;
 
 export type PlayerPreset = 'classic' | 'dark' | 'minimal' | 'mini' | 'glass' | 'lyrics' | 'vinyl';
 export function createPlayerSettings(preset: PlayerPreset = 'classic'): PlayerSettings {
@@ -55,7 +55,7 @@ export function createPlayerSettings(preset: PlayerPreset = 'classic'): PlayerSe
     titleFont: 'sans', artistFont: 'sans', titleSize: 25, artistSize: 14, titleWeight: 650, artistWeight: 500,
     titleColor: null, artistColor: null, align: 'left', showProgress: true, showTimes: true,
     timeDisplay: 'duration', controls: 'full', glyph: 'play', buttonStyle: 'circle', controlsScale: 1,
-    showFavorite: true, paletteStyle: 'strip',
+    showFavorite: true, ...createPaletteSettings('strip'),
   };
   if (preset === 'dark') return { ...base, backgroundMode: 'photo', artworkRadius: 18, artworkShadow: 45, titleSize: 21, timeDisplay: 'remaining', glyph: 'pause', buttonStyle: 'plain' };
   if (preset === 'minimal') return { ...base, artworkRadius: 10, artworkShadow: 15, controls: 'compact', buttonStyle: 'plain', showFavorite: false, paletteStyle: 'dots' };
@@ -80,11 +80,12 @@ export function restorePlayerSettings(value: unknown, preset: PlayerPreset = 'cl
     const candidate = saved[key];
     if (typeof candidate === 'number' && Number.isFinite(candidate)) result[key] = bound(candidate, ranges[key][0], ranges[key][1]);
   }
-  const options = { layout: ['stack', 'mini', 'lyrics', 'vinyl'], artworkShape: ['square', 'circle', 'portrait', 'landscape'], artworkSide: ['left', 'right'], panel: ['none', 'solid', 'glass'], progressStyle: ['line', 'thick', 'segments', 'waveform'], progressThumb: ['none', 'dot', 'line', 'ring'], backgroundMode: ['solid', 'gradient', 'photo', 'ambient'], align: ['left', 'center'], timeDisplay: ['duration', 'remaining'], controls: ['full', 'compact', 'none'], glyph: ['play', 'pause'], buttonStyle: ['circle', 'plain'], paletteStyle: ['strip', 'dots'] } as const;
+  const options = { layout: ['stack', 'mini', 'lyrics', 'vinyl'], artworkShape: ['square', 'circle', 'portrait', 'landscape'], artworkSide: ['left', 'right'], panel: ['none', 'solid', 'glass'], progressStyle: ['line', 'thick', 'segments', 'waveform'], progressThumb: ['none', 'dot', 'line', 'ring'], backgroundMode: ['solid', 'gradient', 'photo', 'ambient'], align: ['left', 'center'], timeDisplay: ['duration', 'remaining'], controls: ['full', 'compact', 'none'], glyph: ['play', 'pause'], buttonStyle: ['circle', 'plain'] } as const;
   for (const key of Object.keys(options) as (keyof typeof options)[]) {
     const candidate = saved[key];
     if (typeof candidate === 'string' && (options[key] as readonly string[]).includes(candidate)) Object.assign(result, { [key]: candidate });
   }
+  Object.assign(result, restorePaletteSettings(saved, result));
   for (const key of ['titleFont', 'artistFont', 'lyricFont'] as const) if (saved[key] && Object.hasOwn(coverFonts, saved[key])) result[key] = saved[key];
   for (const key of ['foreground', 'titleColor', 'artistColor', 'gradientEnd', 'panelColor', 'accent', 'recordColor', 'recordLabelColor'] as const) {
     const candidate = saved[key];
@@ -121,7 +122,7 @@ export function playerLayout(height: number, settings: PlayerSettings, showPalet
   const controls = progressBottom + (settings.controls === 'none' ? 0 : 40 * settings.controlsScale);
   const controlsBottom = controls + (settings.controls === 'none' ? 0 : 36 * settings.controlsScale);
   const palette = controlsBottom + pad + 12;
-  const end = showPalette ? palette + (settings.paletteStyle === 'strip' ? 40 : 22) : controlsBottom;
+  const end = showPalette ? palette + paletteFootprint(settings) : controlsBottom;
   const scale = Math.min(1, (height - 124) / (end + pad));
   const top = bound(height * settings.position / 100, 24 + pad * scale, Math.max(24 + pad * scale, height - 100 - end * scale));
   const left = (470 - size * scale) / 2;

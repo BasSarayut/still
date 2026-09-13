@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { automaticForeground, cropRect, darkenForContrast, darkestColors, initialCrop, initialDraft, luminance, mixWithBlack, parseTime, progress, remaining, restoreDraft, validTimes } from './model';
+import { automaticForeground, cropRect, darkenForContrast, darkestColors, hue, initialCrop, initialDraft, luminance, mixWithBlack, parseTime, progress, remaining, restoreDraft, selectPaletteColors, sortByHue, validTimes } from './model';
+import { createPaletteSettings } from './palette';
 import { devices } from './devices';
 import { composition } from './renderer';
 
@@ -59,7 +60,19 @@ describe('colors and saved drafts', () => {
     expect(draft.title).toBe('青色がすき。');
     expect(draft.background).toBe(initialDraft.background);
     expect(draft.palette).toEqual(initialDraft.palette);
+    expect(draft.paletteByFrequency).toEqual(initialDraft.paletteByFrequency);
     expect(draft.crop).toEqual({ zoom: 4, x: 0, y: 1 });
+  });
+  it('accepts a 5- or 6-color palette (old vs. new imports), softly degrading a missing or mismatched frequency order', () => {
+    const six = ['#111111', '#222222', '#333333', '#444444', '#555555', '#666666'];
+    expect(restoreDraft({ version: 1, palette: six }).palette).toEqual(six);
+    expect(restoreDraft({ version: 1, palette: six }).paletteByFrequency).toEqual(six);
+    const five = ['#111111', '#222222', '#333333', '#444444', '#555555'];
+    expect(restoreDraft({ version: 1, palette: five }).palette).toEqual(five);
+    const reordered = ['#666666', '#555555', '#444444', '#333333', '#222222', '#111111'];
+    expect(restoreDraft({ version: 1, palette: six, paletteByFrequency: reordered }).paletteByFrequency).toEqual(reordered);
+    // A frequency array of the wrong length (stale relative to a differently-sized palette) is ignored.
+    expect(restoreDraft({ version: 1, palette: six, paletteByFrequency: five }).paletteByFrequency).toEqual(six);
   });
   it('restores the Polaroid progress/pause visibility toggles, defaulting old drafts to both on', () => {
     expect(restoreDraft({ version: 1 })).toMatchObject({ showProgress: true, showPauseGlyph: true });
@@ -90,5 +103,27 @@ describe('nowPlaying template colors', () => {
     expect(luminance(darkenForContrast('#f3f1ec', 0.09))).toBeLessThanOrEqual(0.09);
     // Already-dark colors are left alone rather than darkened further than necessary.
     expect(darkenForContrast('#101010', 0.09)).toBe('#101010');
+  });
+});
+
+describe('decorative color palette selection', () => {
+  it('measures hue around the color wheel and sorts colors by it', () => {
+    expect(hue('#ff0000')).toBeCloseTo(0);
+    expect(hue('#00ff00')).toBeCloseTo(120);
+    expect(hue('#0000ff')).toBeCloseTo(240);
+    expect(hue('#808080')).toBe(0);
+    expect(sortByHue(['#0000ff', '#ff0000', '#00ff00'])).toEqual(['#ff0000', '#00ff00', '#0000ff']);
+  });
+
+  it('picks the N most dominant colors, then arranges them by the chosen order', () => {
+    const draft = { palette: ['#111111', '#8eaaa9', '#f3f1ec', '#52656a', '#dbded6', '#b7c9c6'], paletteByFrequency: ['#f3f1ec', '#111111', '#52656a', '#8eaaa9', '#dbded6', '#b7c9c6'] };
+    expect(selectPaletteColors(draft, { ...createPaletteSettings(), paletteCount: 3, paletteOrder: 'frequency' })).toEqual(['#f3f1ec', '#111111', '#52656a']);
+    expect(selectPaletteColors(draft, { ...createPaletteSettings(), paletteCount: 3, paletteOrder: 'luminance' })).toEqual(['#111111', '#52656a', '#f3f1ec']);
+    expect(selectPaletteColors(draft, { ...createPaletteSettings(), paletteCount: 6, paletteOrder: 'frequency' })).toEqual(draft.paletteByFrequency);
+  });
+
+  it('falls back to the luminance-sorted palette when the frequency array is missing or a different length', () => {
+    const draft = { palette: ['#111111', '#222222', '#333333'], paletteByFrequency: [] };
+    expect(selectPaletteColors(draft, { ...createPaletteSettings(), paletteCount: 2, paletteOrder: 'frequency' })).toEqual(['#111111', '#222222']);
   });
 });

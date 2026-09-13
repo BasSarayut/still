@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import './concertTicket.css';
-import { coverFonts } from './albumCover';
+import { coverFontLabels, coverFonts } from './albumCover';
 import { automaticForeground } from './model';
 import { applyTicketPreset, type TicketField, type TicketFieldId, type TicketPreset, type TicketSettings } from './concertTicket';
 import type { MessageKey, Messages } from './i18n';
 
 type Props = { value: TicketSettings; copy: Messages; onChange: (value: TicketSettings) => void };
 const fieldNames: Record<TicketFieldId, MessageKey> = { event: 'ticketEvent', artist: 'ticketArtist', date: 'ticketDate', time: 'ticketTime', venue: 'ticketVenue', gate: 'ticketGate', zone: 'ticketZone', row: 'ticketRow', seat: 'ticketSeat', holder: 'ticketHolder', serial: 'ticketSerial', note: 'ticketNote' };
-const fonts = { sans: 'Sans · Arial', serif: 'Serif · Georgia', mono: 'Mono · Courier', thai: 'Noto Sans Thai', japanese: 'Noto Sans JP' };
 
 function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return <label className="toggle-label"><span>{label}</span><input type="checkbox" role="switch" checked={checked} onChange={event => onChange(event.target.checked)} /><span className="toggle-track" aria-hidden="true" /></label>;
@@ -36,7 +35,7 @@ export function TicketContent({ value, copy, onChange }: Props) {
     <label className="field-label" htmlFor="ticket-label">{copy.ticketLabel}</label><input id="ticket-label" maxLength={40} value={item.label} onChange={event => update({ label: event.target.value })} />
     <label className="field-label" htmlFor="ticket-value">{copy.ticketValue}</label><textarea id="ticket-value" rows={item.id === 'event' || item.id === 'note' ? 3 : 2} maxLength={180} value={item.text} onChange={event => update({ text: event.target.value })} />
     <details className="player-details"><summary>{copy.playerTypography}</summary>
-      <div className="player-select"><label htmlFor="ticket-field-font">{copy.coverFont}</label><select id="ticket-field-font" value={item.font} onChange={event => update({ font: event.target.value as TicketField['font'] })}>{Object.keys(coverFonts).map(font => <option key={font} value={font}>{fonts[font as keyof typeof fonts]}</option>)}</select></div>
+      <div className="player-select"><label htmlFor="ticket-field-font">{copy.coverFont}</label><select id="ticket-field-font" value={item.font} onChange={event => update({ font: event.target.value as TicketField['font'] })}>{Object.keys(coverFonts).map(font => <option key={font} value={font}>{coverFontLabels[font as keyof typeof coverFonts]}</option>)}</select></div>
       <label className="player-range"><span>{copy.coverFontSize}<span className="player-range-value">{item.size}</span></span><input aria-label={copy.coverFontSize} type="range" min={12} max={item.id === 'event' ? 38 : 24} value={item.size} onChange={event => update({ size: event.target.valueAsNumber })} /></label>
       <label className="player-range"><span>{copy.coverWeight}<span className="player-range-value">{item.weight}</span></span><input aria-label={copy.coverWeight} type="range" min={100} max={900} step={50} value={item.weight} onChange={event => update({ weight: event.target.valueAsNumber })} /></label>
       <div className="player-select"><label htmlFor="ticket-field-align">{copy.coverAlign}</label><select id="ticket-field-align" value={item.align} onChange={event => update({ align: event.target.value as TicketField['align'] })}><option value="left">{copy.coverLeft}</option><option value="center">{copy.coverCenter}</option><option value="right">{copy.coverRight}</option></select></div>
@@ -48,7 +47,7 @@ export function TicketContent({ value, copy, onChange }: Props) {
 export function TicketPaper({ value, copy, onChange, palette }: Props & { palette: string[] }) {
   const update = (patch: Partial<TicketSettings>) => onChange({ ...value, ...patch });
   return <details className="player-details"><summary>{copy.ticketPaperSection}</summary>
-    <button type="button" className="text-button ticket-photo-colors" onClick={() => update({ paper: palette[4] ?? value.paper, stubPaper: palette[3] ?? value.stubPaper, accent: palette[0] ?? value.accent, ink: null })}>{copy.ticketPhotoColors}</button>
+    <button type="button" className="text-button ticket-photo-colors" onClick={() => update({ paper: palette[palette.length - 1] ?? value.paper, stubPaper: palette[palette.length - 2] ?? value.stubPaper, accent: palette[0] ?? value.accent, ink: null })}>{copy.ticketPhotoColors}</button>
     {(['paper', 'stubPaper', 'ink', 'accent'] as const).filter(key => key !== 'stubPaper' || value.showStub).map(key => <div className="color-row" key={key}><label htmlFor={`ticket-${key}`}>{copy[({ paper: 'ticketPaper', stubPaper: 'ticketStubPaper', ink: 'ticketInk', accent: 'ticketAccent' } as const)[key]]}</label>{key === 'ink' && <button type="button" className={`auto-button ${value.ink === null ? 'active' : ''}`} aria-pressed={value.ink === null} onClick={() => update({ ink: null })}>{copy.automatic}</button>}<input id={`ticket-${key}`} type="color" value={value[key] ?? automaticForeground(value.paper)} onChange={event => update({ [key]: event.target.value })} /></div>)}
     <div className="player-select"><label htmlFor="ticket-texture">{copy.ticketTexture}</label><select id="ticket-texture" value={value.texture} onChange={event => update({ texture: event.target.value as TicketSettings['texture'] })}><option value="smooth">{copy.ticketSmooth}</option><option value="fiber">{copy.ticketFiber}</option><option value="aged">{copy.ticketAged}</option></select></div>
     {value.texture !== 'smooth' && <label className="player-range"><span>{copy.ticketTextureAmount}<span className="player-range-value">{value.textureAmount}%</span></span><input aria-label={copy.ticketTextureAmount} type="range" min={0} max={60} value={value.textureAmount} onChange={event => update({ textureAmount: event.target.valueAsNumber })} /></label>}

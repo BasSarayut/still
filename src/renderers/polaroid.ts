@@ -1,8 +1,9 @@
-﻿import { automaticForeground, progress, type Draft } from '../model';
+﻿import { automaticForeground, progress, selectPaletteColors, type Draft } from '../model';
 import { coverCropRect, coverFonts } from '../albumCover';
 import { polaroidLayout } from '../polaroid';
 import type { Device } from '../devices';
 import { fitText, fontFamily, roundedRectPath } from './shared';
+import { renderPalette } from './palette';
 
 function caption(context: CanvasRenderingContext2D, text: string, x: number, y: number, width: number) {
   const characters = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text), item => item.segment);
@@ -46,6 +47,22 @@ export function renderPolaroid(canvas: HTMLCanvasElement, draft: Draft, image: H
   context.shadowColor = `rgba(0,0,0,${settings.shadow / 100})`; context.shadowBlur = 26 * outputWidth / 470; context.shadowOffsetY = 14 * outputWidth / 470;
   context.fillStyle = settings.paper; context.fill(frame); context.restore();
   context.save(); context.clip(frame);
+  // Fixed seed gives the same paper grain in every preview and full-resolution export.
+  if (settings.texture !== 'smooth' && settings.textureAmount > 0) {
+    let seed = 130925;
+    const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+    context.save(); context.globalAlpha = settings.textureAmount / 100 * 0.28; context.fillStyle = ink;
+    for (let i = 0; i < layout.cardWidth * layout.cardHeight / 95; i++) {
+      const x = random() * layout.cardWidth, y = random() * layout.cardHeight;
+      context.fillRect(x, y, settings.texture === 'fiber' ? 0.5 + random() * 3 : 0.7 + random() * 1.5, 0.5 + random());
+    }
+    if (settings.texture === 'aged') {
+      const wash = context.createLinearGradient(0, 0, layout.cardWidth, layout.cardHeight);
+      wash.addColorStop(0, '#8a5a2f'); wash.addColorStop(0.22, 'rgba(138,90,47,0)'); wash.addColorStop(0.8, 'rgba(138,90,47,0)'); wash.addColorStop(1, '#8a5a2f');
+      context.fillStyle = wash; context.fillRect(0, 0, layout.cardWidth, layout.cardHeight);
+    }
+    context.restore();
+  }
   const pad = settings.padding, width = settings.photoWidth;
   context.save(); context.clip(roundedRectPath(pad, pad, width, layout.photoHeight, settings.photoRadius));
   if (image) {
@@ -58,6 +75,21 @@ export function renderPolaroid(canvas: HTMLCanvasElement, draft: Draft, image: H
     context.font = `9px ${fontFamily}`; caption(context, 'YOUR FAVORITE MOMENT', layout.cardWidth / 2, pad + layout.photoHeight / 2 + 24, width - 24);
   }
   context.restore();
+  if (settings.photoCorners) {
+    const mount = 18;
+    const corners: [number, number, number][] = [
+      [pad, pad, 0], [pad + width, pad, Math.PI / 2],
+      [pad, pad + layout.photoHeight, -Math.PI / 2], [pad + width, pad + layout.photoHeight, Math.PI],
+    ];
+    context.save(); context.fillStyle = ink; context.strokeStyle = ink; context.lineWidth = 0.7;
+    for (const [x, y, angle] of corners) {
+      context.save(); context.translate(x, y); context.rotate(angle);
+      context.globalAlpha = 0.5; context.beginPath(); context.moveTo(0, 0); context.lineTo(mount, 0); context.lineTo(0, mount); context.closePath(); context.fill();
+      context.globalAlpha = 0.75; context.beginPath(); context.moveTo(mount, 0); context.lineTo(0, mount); context.stroke();
+      context.restore();
+    }
+    context.restore();
+  }
   context.textBaseline = 'top'; context.textAlign = settings.align;
   const titleWidth = width - (settings.showPauseGlyph ? 42 : 0);
   const anchor = (available: number) => settings.align === 'center' ? pad + available / 2 : settings.align === 'right' ? pad + available : pad;
@@ -103,21 +135,8 @@ export function renderPolaroid(canvas: HTMLCanvasElement, draft: Draft, image: H
   }
   context.restore();
   if (draft.showPalette) {
-    context.save(); context.textAlign = 'center'; context.fillStyle = wallInk; context.globalAlpha = 0.75;
     const width = Math.min(360, layout.width), left = (470 - width) / 2;
-    if (settings.paletteStyle === 'strip') {
-      context.font = `8px ${fontFamily}`; context.fillText('C O L O R   P A L E T T E', 235, layout.paletteY);
-      draft.palette.forEach((color, index) => {
-        const swatchWidth = width / draft.palette.length;
-        context.globalAlpha = 1; context.fillStyle = color; context.fillRect(left + index * swatchWidth, layout.paletteY + 16, swatchWidth, 6);
-        context.globalAlpha = 0.75; context.fillStyle = wallInk; context.font = `6.5px ${fontFamily}`;
-        context.fillText(color.toUpperCase(), left + (index + 0.5) * swatchWidth, layout.paletteY + 36);
-      });
-    } else draft.palette.forEach((color, index) => {
-      context.globalAlpha = 1; context.fillStyle = color;
-      context.beginPath(); context.arc(235 + (index - (draft.palette.length - 1) / 2) * 22, layout.paletteY, 6, 0, Math.PI * 2); context.fill();
-    });
-    context.restore();
+    renderPalette(context, selectPaletteColors(draft, settings), left, width, layout.paletteY, settings, wallInk);
   }
   if (draft.showCredit && draft.credit) {
     context.globalAlpha = 0.65; context.fillStyle = wallInk; context.textAlign = 'center';

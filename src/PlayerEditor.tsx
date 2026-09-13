@@ -1,6 +1,7 @@
-import { coverFonts } from './albumCover';
+import { coverFontLabels, coverFonts } from './albumCover';
 import { applyPlayerPreset, type PlayerSettings, type PlayerPreset } from './musicPlayer';
 import { PlayerLayoutControls, PlayerNoteControls, PlayerProgressControls, PlayerSectionReset, PlayerSurfaceControls, PlayerTransportControls } from './PlayerAppearance';
+import PaletteEditor from './PaletteEditor';
 import type { Messages } from './i18n';
 
 type Props = { value: PlayerSettings; copy: Messages; onChange: (value: PlayerSettings) => void };
@@ -29,7 +30,7 @@ export default function PlayerEditor({ value, copy, onChange, ink }: Props & { i
   const update = (patch: Partial<PlayerSettings>) => onChange({ ...value, ...patch });
   const range = (key: 'artworkSize' | 'artworkRadius' | 'artworkShadow' | 'position' | 'gap' | 'titleSize' | 'artistSize' | 'titleWeight' | 'artistWeight' | 'controlsScale', label: string, min: number, max: number, step = 1, suffix = '') => <Range label={label} value={value[key]} min={min} max={max} step={step} suffix={suffix} onChange={next => update({ [key]: next })} />;
   const toggle = (key: 'showProgress' | 'showTimes' | 'showFavorite', label: string) => <label className="toggle-label"><span>{label}</span><input type="checkbox" role="switch" checked={value[key]} onChange={event => update({ [key]: event.target.checked })} /><span className="toggle-track" aria-hidden="true" /></label>;
-  const select = (key: 'align' | 'timeDisplay' | 'controls' | 'glyph' | 'buttonStyle' | 'paletteStyle', label: string, options: [string, string][]) => <div className="player-select"><label htmlFor={`player-${key}`}>{label}</label><select id={`player-${key}`} value={value[key]} onChange={event => update({ [key]: event.target.value })}>{options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}</select></div>;
+  const select = (key: 'align' | 'timeDisplay' | 'controls' | 'glyph' | 'buttonStyle', label: string, options: [string, string][]) => <div className="player-select"><label htmlFor={`player-${key}`}>{label}</label><select id={`player-${key}`} value={value[key]} onChange={event => update({ [key]: event.target.value })}>{options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}</select></div>;
   return <div className="player-editor">
     <details className="player-details"><summary>{copy.playerArtwork}</summary>
       <PlayerLayoutControls {...props} />
@@ -42,7 +43,7 @@ export default function PlayerEditor({ value, copy, onChange, ink }: Props & { i
     <details className="player-details"><summary>{copy.playerTypography}</summary>
       {select('align', copy.coverAlign, [['left', copy.coverLeft], ['center', copy.coverCenter]])}
       {(['title', 'artist'] as const).map(kind => <fieldset className="player-type-group" key={kind}><legend>{kind === 'title' ? copy.title : copy.artist}</legend>
-        <div className="player-select"><label htmlFor={`player-${kind}-font`}>{copy.coverFont}</label><select id={`player-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}>{Object.keys(coverFonts).map(font => <option key={font} value={font}>{({ sans: 'Sans · Arial', serif: 'Serif · Georgia', mono: 'Mono · Courier', thai: 'Noto Sans Thai', japanese: 'Noto Sans JP' })[font]}</option>)}</select></div>
+        <div className="player-select"><label htmlFor={`player-${kind}-font`}>{copy.coverFont}</label><select id={`player-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}>{Object.keys(coverFonts).map(font => <option key={font} value={font}>{coverFontLabels[font as keyof typeof coverFonts]}</option>)}</select></div>
         {range(`${kind}Size`, copy.coverFontSize, kind === 'title' ? 14 : 10, kind === 'title' ? 38 : 24)}
         {range(`${kind}Weight`, copy.coverWeight, 100, 900, 50)}
         <div className="color-row"><label htmlFor={`player-${kind}-color`}>{copy.coverTextColor}</label><button type="button" className={`auto-button ${value[`${kind}Color`] === null ? 'active' : ''}`} aria-pressed={value[`${kind}Color`] === null} onClick={() => update({ [`${kind}Color`]: null })}>{copy.coverInherit}</button><input id={`player-${kind}-color`} type="color" value={value[`${kind}Color`] ?? ink} onChange={event => update({ [`${kind}Color`]: event.target.value })} /></div>
@@ -57,8 +58,8 @@ export default function PlayerEditor({ value, copy, onChange, ink }: Props & { i
       {value.controls !== 'none' && <>{select('glyph', copy.playerGlyph, [['play', copy.playerPlay], ['pause', copy.playerPause]])}{select('buttonStyle', copy.playerButtonStyle, [['circle', copy.playerCircle], ['plain', copy.playerPlain]])}{range('controlsScale', copy.playerControlsSize, 0.7, 1.3, 0.05, '×')}</>}
       {value.controls !== 'none' && <PlayerTransportControls {...props} />}
       {toggle('showFavorite', copy.playerFavorite)}
-      {select('paletteStyle', copy.playerPaletteStyle, [['strip', copy.playerStrip], ['dots', copy.playerDots]])}
-      <PlayerSectionReset {...props} keys={['showProgress', 'showTimes', 'timeDisplay', 'progressStyle', 'progressThumb', 'controls', 'glyph', 'buttonStyle', 'controlsScale', 'showPrevious', 'showNext', 'showShuffle', 'showRepeat', 'showFavorite', 'paletteStyle']} />
+      <PaletteEditor value={value} copy={copy} onChange={update} />
+      <PlayerSectionReset {...props} keys={['showProgress', 'showTimes', 'timeDisplay', 'progressStyle', 'progressThumb', 'controls', 'glyph', 'buttonStyle', 'controlsScale', 'showPrevious', 'showNext', 'showShuffle', 'showRepeat', 'showFavorite', 'paletteStyle', 'paletteCount', 'paletteOrder', 'paletteSize', 'paletteGap']} />
     </details>
   </div>;
 }

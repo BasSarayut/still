@@ -2,6 +2,7 @@ import { createAlbumCover, restoreAlbumCover, type AlbumCover } from './albumCov
 import { createPlayerSettings, restorePlayerSettings, type PlayerSettings } from './musicPlayer';
 import { createPolaroidSettings, restorePolaroidSettings, type PolaroidSettings } from './polaroid';
 import { createTicketSettings, restoreTicketSettings, type TicketSettings } from './concertTicket';
+import type { PaletteSettings } from './palette';
 
 export type Crop = { zoom: number; x: number; y: number };
 export type TemplateId = 'custom' | 'polaroid' | 'albumCover' | 'concertTicket';
@@ -22,6 +23,7 @@ export type Draft = {
   background: string;
   foreground: string | null;
   palette: string[];
+  paletteByFrequency: string[];
   crop: Crop;
   image: Blob | null;
   albumCover: AlbumCover;
@@ -35,7 +37,8 @@ export const initialDraft: Draft = {
   version: 1, templateId: 'custom', device: 'iPhone 16', title: 'เพลงโปรดของคุณ', artist: 'Your favorite artist',
   elapsed: '0:42', duration: '4:18', credit: '', showCredit: true, showPalette: true,
   showGuides: true, showProgress: true, showPauseGlyph: true, background: '#f3f1ec', foreground: null,
-  palette: ['#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
+  palette: ['#3a474b', '#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
+  paletteByFrequency: ['#3a474b', '#52656a', '#8eaaa9', '#b7c9c6', '#dbded6', '#f3f1ec'],
   crop: initialCrop, image: null, albumCover: createAlbumCover(), player: createPlayerSettings(), polaroid: createPolaroidSettings(), concertTicket: createTicketSettings(),
 };
 
@@ -81,6 +84,30 @@ export function luminance(hex: string) {
     return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
   });
   return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
+// Hue angle (0–360) of a hex color, used to arrange the decorative palette around a color wheel.
+export function hue(hex: string): number {
+  const [red, green, blue] = [1, 3, 5].map(start => parseInt(hex.slice(start, start + 2), 16) / 255);
+  const max = Math.max(red, green, blue), min = Math.min(red, green, blue), delta = max - min;
+  if (delta === 0) return 0;
+  const raw = max === red ? ((green - blue) / delta) % 6 : max === green ? (blue - red) / delta + 2 : (red - green) / delta + 4;
+  const degrees = raw * 60;
+  return degrees < 0 ? degrees + 360 : degrees;
+}
+
+export function sortByHue(colors: string[]): string[] {
+  return [...colors].sort((a, b) => hue(a) - hue(b));
+}
+
+// Which of the extracted colors the decorative palette shows, and in what order. `paletteCount`
+// picks the N most dominant colors (from paletteByFrequency); `paletteOrder` then arranges them.
+export function selectPaletteColors(draft: Pick<Draft, 'palette' | 'paletteByFrequency'>, settings: PaletteSettings): string[] {
+  const source = draft.paletteByFrequency.length === draft.palette.length ? draft.paletteByFrequency : draft.palette;
+  const dominant = source.slice(0, Math.min(settings.paletteCount, source.length));
+  if (settings.paletteOrder === 'hue') return sortByHue(dominant);
+  if (settings.paletteOrder === 'luminance') return [...dominant].sort((a, b) => luminance(a) - luminance(b));
+  return dominant;
 }
 
 export function automaticForeground(background: string) {
@@ -157,7 +184,9 @@ export function restoreDraft(value: unknown): Draft {
   if (color(saved.background)) restored.background = saved.background;
   if (color(saved.foreground)) restored.foreground = saved.foreground;
   if (!saved.player && !legacyDark && color(saved.foreground)) restored.player.foreground = saved.foreground;
-  if (Array.isArray(saved.palette) && saved.palette.length === 5 && saved.palette.every(color)) restored.palette = saved.palette;
+  if (Array.isArray(saved.palette) && (saved.palette.length === 5 || saved.palette.length === 6) && saved.palette.every(color)) restored.palette = saved.palette;
+  restored.paletteByFrequency = Array.isArray(saved.paletteByFrequency) && saved.paletteByFrequency.length === restored.palette.length && saved.paletteByFrequency.every(color)
+    ? saved.paletteByFrequency : restored.palette;
   if (saved.crop && [saved.crop.zoom, saved.crop.x, saved.crop.y].every(Number.isFinite)) {
     restored.crop = { zoom: clamp(saved.crop.zoom, 1, 4), x: clamp(saved.crop.x), y: clamp(saved.crop.y) };
   }

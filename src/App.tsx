@@ -142,7 +142,7 @@ export default function App() {
       const imported = await importImage(file);
       if (current !== importRevision.current) return;
       setImage(imported.image);
-      update({ image: imported.blob, crop: initialCrop, palette: imported.palette, background: imported.palette[0], foreground: null });
+      update({ image: imported.blob, crop: initialCrop, palette: imported.palette, paletteByFrequency: imported.paletteByFrequency, background: imported.palette[0], foreground: null });
     } catch (failure) {
       if (current === importRevision.current) setError(errorMessageKey(failure, 'importError'));
     } finally { if (current === importRevision.current) setBusy(false); }

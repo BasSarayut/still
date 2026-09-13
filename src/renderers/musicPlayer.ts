@@ -1,8 +1,9 @@
-import { automaticForeground, playerColors, progress, remaining, type Draft } from '../model';
+import { automaticForeground, playerColors, progress, remaining, selectPaletteColors, type Draft } from '../model';
 import { coverCropRect, coverFonts } from '../albumCover';
 import { playerLayout } from '../musicPlayer';
 import type { Device } from '../devices';
 import { fitText, fontFamily, line, roundedRectPath, triangle } from './shared';
+import { renderPalette } from './palette';
 
 function textLines(context: CanvasRenderingContext2D, text: string, width: number, maxLines: number) {
   const segments = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text), item => item.segment);
@@ -167,20 +168,7 @@ export function renderMusicPlayer(canvas: HTMLCanvasElement, draft: Draft, image
     }
     context.restore();
   }
-  if (draft.showPalette) {
-    context.textAlign = 'center';
-    if (settings.paletteStyle === 'dots') {
-      draft.palette.forEach((color, index) => { context.fillStyle = color; context.globalAlpha = 1; context.beginPath(); context.arc(235 + (index - 2) * 25, frame.palette + 10, 7, 0, Math.PI * 2); context.fill(); });
-    } else {
-      context.fillStyle = colors.foreground; context.globalAlpha = 0.75; context.font = `8px ${fontFamily}`;
-      context.fillText('C O L O R   P A L E T T E', 235, frame.palette + 8);
-      draft.palette.forEach((color, index) => {
-        context.globalAlpha = 1; context.fillStyle = color; context.fillRect(left + index * size / 5, frame.palette + 20, size / 5, 6);
-        context.fillStyle = colors.foreground; context.globalAlpha = 0.75; context.font = `6.5px ${fontFamily}`;
-        context.fillText(color.toUpperCase(), left + (index + 0.5) * size / 5, frame.palette + 40);
-      });
-    }
-  }
+  if (draft.showPalette) renderPalette(context, selectPaletteColors(draft, settings), left, size, frame.palette, settings, colors.foreground);
   if (draft.showCredit && draft.credit) {
     context.globalAlpha = 0.7; context.fillStyle = colors.foreground; context.textAlign = 'center'; fitText(context, draft.credit, 235, height - 72, size, 10);
   }

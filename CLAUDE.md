@@ -30,15 +30,17 @@ to stay current as templates are added.
   it moves the composition upward as necessary to leave room for the palette and signature.
   Saved `nowPlaying` drafts migrate to `custom` with the dark preset. Preserve their image, crop,
   content and old manual colors, even when those colors are not currently used by the dark preset.
-- `polaroid` — instant-film paper with Classic, Clean, Diary, Cinema and Noir presets. Presets
-  preserve the photo, crop, title, artist, date/note, wall colors and credit while resetting paper
-  styling. Paper and caption ink are independently editable from wall colors; automatic paper
-  ink follows paper contrast. Photo ratio, border, caption area, corners, rotation, placement,
-  shadow, typography, tape and wall pattern are customizable. Use the shared `polaroidLayout`
-  for rendering and crop interaction, including inverse rotation for pointer movement. Keep
-  the whole rotated card and caption inside the canvas with room for palette and credit.
-  Old drafts without `polaroid` settings open as Classic and inherit their saved progress/pause
-  toggles. New playback settings belong to this template; hidden progress bypasses time validation.
+- `polaroid` — instant-film paper with Classic, Clean, Diary, Cinema, Noir, Postcard, Scrapbook
+  and Formal presets. Presets preserve the photo, crop, title, artist, date/note, wall colors and
+  credit while resetting paper styling. Paper and caption ink are independently editable from wall
+  colors; automatic paper ink follows paper contrast. Photo ratio, border, caption area, corners,
+  rotation, placement, shadow, paper texture (smooth/paper fibers/aged, with a fixed grain seed so
+  preview and export match), typography, tape, triangular photo corner mounts and wall pattern
+  are customizable. Use the shared `polaroidLayout` for rendering and crop interaction, including
+  inverse rotation for pointer movement. Keep the whole rotated card and caption inside the canvas
+  with room for palette and credit. Old drafts without `polaroid` settings open as Classic and
+  inherit their saved progress/pause toggles. New playback settings belong to this template;
+  hidden progress bypasses time validation.
 - `albumCover` — a color area above an edge-to-edge rectangular photo. The split and up to 12
   independent text blocks are editable, including typography and percentage-based positions.
   Supports a 2400 × 2400 square canvas or the selected iPhone size. Uses its own text content,
@@ -102,7 +104,9 @@ repeat, etc.) are decorative artwork, not buttons.
 
 ## Colors
 
-On upload, ~5 colors are extracted from the photo. Solid and custom-gradient player backgrounds,
+On upload, up to 6 colors are extracted from the photo, both sorted dark-to-light (`palette`,
+used for background swatches and photo-derived contrast) and ranked by how common each color is
+in the photo (`paletteByFrequency`, used by the decorative Color Palette). Solid and custom-gradient player backgrounds,
 Polaroid walls and Album Cover backgrounds use the user's chosen colors. The player's photo-derived
 dark background darkens extracted colors to support light text, and offers extra darkness adjustment.
 The player chooses automatic ink against both gradient endpoints and supports manual overrides for
@@ -111,15 +115,20 @@ Polaroid paper and caption ink have their own settings; wall colors only recolor
 
 ## Optional extras
 
-- Color Palette: optional on Music Player and Polaroid. The player offers strips or dots. Album
-  Cover uses editable text blocks instead of playback ornaments, a palette strip or a signature field.
+- Color Palette: optional on Music Player and Polaroid, sharing one settings type (`PaletteSettings`
+  in `palette.ts`) and one renderer (`renderers/palette.ts`). Seven decorative styles — strip, dots,
+  gradient bar, vertical ribbon, connected-dot necklace, numbered swatches, and hero + accents — plus
+  how many colors to show (3–6, picked from the most dominant colors in the photo) and their order
+  (dominance, dark-to-light, or hue wheel), and independent size/spacing scales. Album Cover uses
+  editable text blocks instead of playback ornaments, a palette strip or a signature field.
 - Credit line: user-editable text, hidden by default (starts empty, shown once the user enables it
   and/or types something).
 
 ## Fonts
 
-Every template lets users choose system sans, serif, mono, or self-hosted Noto Sans
-Thai/JP. Load selected fonts before export, including independent title/artist weights.
+Every template lets users choose system sans, serif, mono, self-hosted Noto Sans Thai/JP, or
+self-hosted Caveat (a handwritten/script option shared through `coverFonts`/`coverFontLabels` in
+`albumCover.ts`). Load selected fonts before export, including independent title/artist weights.
 Other text uses the OS system font stack (San Francisco on Apple devices) with Noto Sans Thai/JP as
 fallbacks for non-Latin text, self-hosted (no Google Fonts / third-party font network calls at
 runtime — this backs the "nothing leaves the device" privacy claim). Small cross-OS rendering

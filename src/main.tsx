@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import '@fontsource-variable/noto-sans-thai';
 import '@fontsource-variable/noto-sans-jp';
+import '@fontsource-variable/caveat';
 import './styles.css';
 import './studio.css';
 

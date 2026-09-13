@@ -6,6 +6,13 @@ export const coverFonts = {
   mono: '"Courier New", "Noto Sans Thai Variable", "Noto Sans JP Variable", monospace',
   thai: '"Noto Sans Thai Variable", "Noto Sans JP Variable", sans-serif',
   japanese: '"Noto Sans JP Variable", "Noto Sans Thai Variable", sans-serif',
+  handwritten: '"Caveat Variable", "Noto Sans Thai Variable", "Noto Sans JP Variable", cursive',
+};
+
+// Shared label list so every template's font picker (player, polaroid, cover, ticket) stays in sync.
+export const coverFontLabels: Record<keyof typeof coverFonts, string> = {
+  sans: 'Sans · Arial', serif: 'Serif · Georgia', mono: 'Mono · Courier',
+  thai: 'Noto Sans Thai', japanese: 'Noto Sans JP', handwritten: 'Handwritten · Caveat',
 };
 
 export type CoverText = {
