@@ -4,7 +4,7 @@ const en = {
   ticketContent: 'Concert details', ticketField: 'Edit a field', ticketLabel: 'Field label', ticketValue: 'Field text', ticketEarlier: 'Move earlier', ticketLater: 'Move later',
   ticketEvent: 'Event name', ticketArtist: 'Artist', ticketDate: 'Date', ticketTime: 'Time', ticketVenue: 'Venue', ticketGate: 'Gate', ticketZone: 'Zone', ticketRow: 'Row', ticketSeat: 'Seat', ticketHolder: 'Ticket holder', ticketSerial: 'Ticket number', ticketNote: 'Personal note',
   ticketFrame: 'Ticket layout', ticketOrientation: 'Ticket orientation', ticketPortrait: 'Portrait', ticketLandscape: 'Landscape', ticketSize: 'Ticket size', ticketPosition: 'Ticket position', ticketRotation: 'Ticket rotation', ticketPhoto: 'Show photo', ticketPhotoShare: 'Photo area',
-  ticketLayoutHint: 'The ticket fits inside the wallpaper. Long text wraps or shrinks to fit; extra text ends with … . Hidden fields close up automatically.',
+  ticketLayoutHint: 'The ticket fits inside the wallpaper. Long text wraps or shrinks to fit; extra text ends with … Hidden fields close up automatically.',
   ticketStub: 'Stub & perforation', ticketShowStub: 'Show ticket stub', ticketStubSide: 'Stub position', ticketTop: 'Top', ticketBottom: 'Bottom', ticketStubShare: 'Stub proportion', ticketLinked: 'Use concert details on stub', ticketStubText: 'Custom stub text',
   ticketLinkedHint: 'Zone, row and seat appear on the stub. The landscape stub also repeats the event and date. Changes follow the main fields.',
   ticketPerforation: 'Perforation style', ticketNone: 'None', ticketDash: 'Dashed line', ticketHoles: 'Punched holes', ticketHoleSize: 'Perforation size', ticketHoleGap: 'Perforation spacing', ticketPerforationOpacity: 'Perforation ink', ticketNotches: 'Semicircle cutouts',
@@ -13,14 +13,14 @@ const en = {
 };
 type TicketMessages = { [K in keyof typeof en]: string };
 const th: TicketMessages = {
-  templateConcertTicket: 'Concert Ticket (บัตรคอนเสิร์ต)', ticketPresetHint: 'เลือกสไตล์เริ่มต้น รูป การครอป ชื่อช่อง และข้อความที่กรอกจะยังอยู่',
+  templateConcertTicket: 'Concert Ticket (บัตรคอนเสิร์ต)', ticketPresetHint: 'เลือกสไตล์เริ่มต้น แล้วปรับต่อได้ รูป การครอบตัด ชื่อช่อง และข้อความที่กรอกจะยังอยู่',
   ticketPhotoHint: 'ภาพแนวตั้ง · หางบัตรเก็บความทรงจำ', ticketClassicHint: 'บัตรแนวนอน · กระดาษวินเทจ', ticketMidnightHint: 'กระดาษเข้ม · อารมณ์แสงเวที',
   ticketContent: 'ข้อมูลคอนเสิร์ต', ticketField: 'เลือกช่องที่จะแก้ไข', ticketLabel: 'ชื่อช่อง', ticketValue: 'ข้อความในช่อง', ticketEarlier: 'เลื่อนขึ้น', ticketLater: 'เลื่อนลง',
-  ticketEvent: 'ชื่องาน', ticketArtist: 'ศิลปิน', ticketDate: 'วันที่', ticketTime: 'เวลา', ticketVenue: 'สถานที่', ticketGate: 'ประตู', ticketZone: 'โซน', ticketRow: 'แถว', ticketSeat: 'ที่นั่ง', ticketHolder: 'ชื่อผู้ถือบัตร', ticketSerial: 'หมายเลขบัตร', ticketNote: 'ข้อความความทรงจำ',
+  ticketEvent: 'ชื่องาน', ticketArtist: 'ศิลปิน', ticketDate: 'วันที่', ticketTime: 'เวลา', ticketVenue: 'สถานที่', ticketGate: 'ประตู', ticketZone: 'โซน', ticketRow: 'แถว', ticketSeat: 'ที่นั่ง', ticketHolder: 'ชื่อผู้ถือบัตร', ticketSerial: 'หมายเลขบัตร', ticketNote: 'บันทึกความทรงจำ',
   ticketFrame: 'รูปทรงและการจัดวางบัตร', ticketOrientation: 'แนวบัตร', ticketPortrait: 'แนวตั้ง', ticketLandscape: 'แนวนอน', ticketSize: 'ขนาดบัตร', ticketPosition: 'ตำแหน่งบัตร', ticketRotation: 'เอียงบัตร', ticketPhoto: 'แสดงรูปภาพ', ticketPhotoShare: 'พื้นที่รูปภาพ',
-  ticketLayoutHint: 'บัตรปรับให้พอดีวอลเปเปอร์ ข้อความยาวจะขึ้นบรรทัดหรือลดขนาด และใช้ … เมื่อเกินพื้นที่ ช่องที่ซ่อนจะจัดเรียงใหม่อัตโนมัติ',
+  ticketLayoutHint: 'บัตรจะปรับให้พอดีกับวอลเปเปอร์ ข้อความยาวจะขึ้นบรรทัดใหม่หรือลดขนาดลง และแสดง … เมื่อเกินพื้นที่ ช่องที่ซ่อนจะจัดเรียงใหม่อัตโนมัติ',
   ticketStub: 'หางบัตรและรอยปรุ', ticketShowStub: 'แสดงหางบัตร', ticketStubSide: 'ตำแหน่งหางบัตร', ticketTop: 'ด้านบน', ticketBottom: 'ด้านล่าง', ticketStubShare: 'สัดส่วนหางบัตร', ticketLinked: 'ใช้ข้อมูลงานเดียวกันบนหางบัตร', ticketStubText: 'ข้อความเฉพาะบนหางบัตร',
-  ticketLinkedHint: 'โซน แถว และที่นั่งแสดงบนหางบัตร แนวนอนจะแสดงชื่องานและวันที่ซ้ำด้วย แก้ข้อมูลหลักแล้วหางบัตรเปลี่ยนตาม',
+  ticketLinkedHint: 'โซน แถว และที่นั่งจะแสดงบนหางบัตร บัตรแนวนอนจะแสดงชื่องานและวันที่ด้วย เมื่อแก้ไขข้อมูลหลัก หางบัตรจะเปลี่ยนตามอัตโนมัติ',
   ticketPerforation: 'รูปแบบรอยปรุ', ticketNone: 'ไม่มี', ticketDash: 'เส้นประ', ticketHoles: 'รูเจาะ', ticketHoleSize: 'ขนาดรอยปรุ', ticketHoleGap: 'ระยะห่างรอยปรุ', ticketPerforationOpacity: 'ความเข้มหมึกรอยปรุ', ticketNotches: 'รอยเว้าครึ่งวงกลม',
   ticketPaperSection: 'สีบัตรและเนื้อกระดาษ', ticketPaper: 'สีตัวบัตร', ticketStubPaper: 'สีหางบัตร', ticketInk: 'สีหมึกบนบัตร', ticketAccent: 'สีเน้น', ticketTexture: 'พื้นผิวกระดาษ', ticketSmooth: 'เรียบ', ticketFiber: 'ใยกระดาษ', ticketAged: 'กระดาษเก่า', ticketTextureAmount: 'ความเข้มพื้นผิว', ticketPhotoColors: 'ใช้สีจากรูปบนบัตร',
   ticketDecorations: 'ของตกแต่งบัตร', ticketBarcode: 'แสดงบาร์โค้ดตกแต่ง', ticketBarcodeHint: 'บาร์โค้ดเป็นลายตกแต่งสำหรับบัตรเก็บความทรงจำ', ticketShowBadge: 'แสดงตราบนบัตร', ticketBadge: 'ข้อความบนตรา', ticketNoPhotoHint: 'บัตรข้อความพร้อมส่งออกได้เลย',

@@ -16,7 +16,7 @@ const suggestions: Record<Props['template'], Font[]> = {
   concertTicket: ['oswald', 'robotoMono', 'kanit', 'spaceGrotesk'],
 };
 const groups: { label: string; fonts: Font[] }[] = [
-  { label: 'ไทย · Thai', fonts: ['thai', 'anuphan', 'kanit', 'thaiSerif', 'mali'] },
+  { label: 'ไทย / Thai', fonts: ['thai', 'anuphan', 'kanit', 'thaiSerif', 'mali'] },
   { label: 'เรียบ / Modern sans', fonts: ['sans', 'dmSans', 'spaceGrotesk', 'oswald'] },
   { label: 'คลาสสิก / Serif', fonts: ['serif', 'playfair', 'cormorant'] },
   { label: 'ลายมือ / Handwriting', fonts: ['handwritten'] },
