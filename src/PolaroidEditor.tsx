@@ -1,4 +1,4 @@
-import { coverFontLabels, coverFonts } from './albumCover';
+import FontOptions from './FontOptions';
 import { automaticForeground } from './model';
 import { createPolaroidSettings, type PolaroidPreset, type PolaroidSettings } from './polaroid';
 import PaletteEditor from './PaletteEditor';
@@ -39,7 +39,7 @@ export default function PolaroidEditor({ value, copy, onChange }: Props) {
     <details className="player-details"><summary>{copy.playerTypography}</summary>
       {select('align', copy.coverAlign, [['left', copy.coverLeft], ['center', copy.coverCenter], ['right', copy.coverRight]])}
       {(['title', 'artist'] as const).map(kind => <fieldset className="player-type-group" key={kind}><legend>{kind === 'title' ? copy.title : copy.artist}</legend>
-        <div className="player-select"><label htmlFor={`polaroid-${kind}-font`}>{copy.coverFont}</label><select id={`polaroid-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}>{Object.keys(coverFonts).map(font => <option key={font} value={font}>{coverFontLabels[font as keyof typeof coverFonts]}</option>)}</select></div>
+        <div className="player-select"><label htmlFor={`polaroid-${kind}-font`}>{copy.coverFont}</label><select id={`polaroid-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}><FontOptions template="polaroid" /></select></div>
         {range(`${kind}Size`, copy.coverFontSize, kind === 'title' ? 14 : 10, kind === 'title' ? 32 : 22)}{range(`${kind}Weight`, copy.coverWeight, 100, 900, 50)}
         {toggle(`${kind}Italic`, copy.coverItalic)}{color(`${kind}Color`, copy.coverTextColor, true)}
       </fieldset>)}

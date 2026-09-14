@@ -1,4 +1,4 @@
-import { coverFontLabels, coverFonts } from './albumCover';
+import FontOptions from './FontOptions';
 import { applyPlayerPreset, type PlayerSettings, type PlayerPreset } from './musicPlayer';
 import { PlayerLayoutControls, PlayerNoteControls, PlayerProgressControls, PlayerSectionReset, PlayerSurfaceControls, PlayerTransportControls } from './PlayerAppearance';
 import PaletteEditor from './PaletteEditor';
@@ -43,7 +43,7 @@ export default function PlayerEditor({ value, copy, onChange, ink }: Props & { i
     <details className="player-details"><summary>{copy.playerTypography}</summary>
       {select('align', copy.coverAlign, [['left', copy.coverLeft], ['center', copy.coverCenter]])}
       {(['title', 'artist'] as const).map(kind => <fieldset className="player-type-group" key={kind}><legend>{kind === 'title' ? copy.title : copy.artist}</legend>
-        <div className="player-select"><label htmlFor={`player-${kind}-font`}>{copy.coverFont}</label><select id={`player-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}>{Object.keys(coverFonts).map(font => <option key={font} value={font}>{coverFontLabels[font as keyof typeof coverFonts]}</option>)}</select></div>
+        <div className="player-select"><label htmlFor={`player-${kind}-font`}>{copy.coverFont}</label><select id={`player-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}><FontOptions template="custom" /></select></div>
         {range(`${kind}Size`, copy.coverFontSize, kind === 'title' ? 14 : 10, kind === 'title' ? 38 : 24)}
         {range(`${kind}Weight`, copy.coverWeight, 100, 900, 50)}
         <div className="color-row"><label htmlFor={`player-${kind}-color`}>{copy.coverTextColor}</label><button type="button" className={`auto-button ${value[`${kind}Color`] === null ? 'active' : ''}`} aria-pressed={value[`${kind}Color`] === null} onClick={() => update({ [`${kind}Color`]: null })}>{copy.coverInherit}</button><input id={`player-${kind}-color`} type="color" value={value[`${kind}Color`] ?? ink} onChange={event => update({ [`${kind}Color`]: event.target.value })} /></div>

@@ -1,6 +1,7 @@
+import FontOptions from './FontOptions';
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { applyCoverPreset, coverFontLabels, coverFonts, createCoverText, type AlbumCover, type CoverPreset, type CoverText } from './albumCover';
+import { applyCoverPreset, createCoverText, type AlbumCover, type CoverPreset, type CoverText } from './albumCover';
 import type { Messages } from './i18n';
 
 type Props = { value: AlbumCover; ink: string; copy: Messages; onChange: (value: AlbumCover) => void; selected?: string; onSelect?: (id: string) => void; language?: 'th' | 'en' | 'ja' };
@@ -64,7 +65,7 @@ export default function AlbumCoverEditor({ value, ink, copy, onChange, selected:
         <button className="text-button" onClick={() => onChange({ ...value, texts: value.texts.filter(text => text.id !== active.id) })}><Trash2 size={13} />{copy.coverDeleteText}</button></div>
       <label className="field-label" htmlFor="cover-font">{copy.coverFont}</label>
       <select id="cover-font" value={active.font} onChange={event => change({ font: event.target.value as CoverText['font'] })}>
-        {Object.keys(coverFonts).map(font => <option key={font} value={font}>{coverFontLabels[font as keyof typeof coverFonts]}</option>)}
+        <FontOptions template="albumCover" style={value.style} />
       </select>
       <div className="cover-grid">{number('size', copy.coverFontSize, 6, 80)}{number('weight', copy.coverWeight, 100, 900, 100)}</div>
       <div className="cover-text-actions"><label><input type="checkbox" checked={active.italic} onChange={event => change({ italic: event.target.checked })} />{copy.coverItalic}</label></div>

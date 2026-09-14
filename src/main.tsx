@@ -4,6 +4,18 @@ import App from './App';
 import '@fontsource-variable/noto-sans-thai';
 import '@fontsource-variable/noto-sans-jp';
 import '@fontsource-variable/caveat';
+import '@fontsource-variable/anuphan';
+import '@fontsource-variable/noto-serif-thai';
+import '@fontsource/kanit/400.css';
+import '@fontsource/kanit/700.css';
+import '@fontsource/mali/400.css';
+import '@fontsource/mali/700.css';
+import '@fontsource-variable/dm-sans';
+import '@fontsource-variable/space-grotesk';
+import '@fontsource-variable/playfair-display';
+import '@fontsource-variable/cormorant-garamond';
+import '@fontsource-variable/oswald';
+import '@fontsource-variable/roboto-mono';
 import './styles.css';
 import './studio.css';
 

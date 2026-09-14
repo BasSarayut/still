@@ -7,12 +7,25 @@ export const coverFonts = {
   thai: '"Noto Sans Thai Variable", "Noto Sans JP Variable", sans-serif',
   japanese: '"Noto Sans JP Variable", "Noto Sans Thai Variable", sans-serif',
   handwritten: '"Caveat Variable", "Noto Sans Thai Variable", "Noto Sans JP Variable", cursive',
+  anuphan: '"Anuphan Variable", "Noto Sans JP Variable", sans-serif',
+  thaiSerif: '"Noto Serif Thai Variable", "Playfair Display Variable", "Noto Sans JP Variable", serif',
+  kanit: '"Kanit", "Noto Sans JP Variable", sans-serif',
+  mali: '"Mali", "Noto Sans JP Variable", cursive',
+  dmSans: '"DM Sans Variable", "Anuphan Variable", "Noto Sans JP Variable", sans-serif',
+  spaceGrotesk: '"Space Grotesk Variable", "Kanit", "Noto Sans JP Variable", sans-serif',
+  playfair: '"Playfair Display Variable", "Noto Serif Thai Variable", "Noto Sans JP Variable", serif',
+  cormorant: '"Cormorant Garamond Variable", "Noto Serif Thai Variable", "Noto Sans JP Variable", serif',
+  oswald: '"Oswald Variable", "Kanit", "Noto Sans JP Variable", sans-serif',
+  robotoMono: '"Roboto Mono Variable", "Anuphan Variable", "Noto Sans JP Variable", monospace',
 };
 
 // Shared label list so every template's font picker (player, polaroid, cover, ticket) stays in sync.
 export const coverFontLabels: Record<keyof typeof coverFonts, string> = {
   sans: 'Sans · Arial', serif: 'Serif · Georgia', mono: 'Mono · Courier',
   thai: 'Noto Sans Thai', japanese: 'Noto Sans JP', handwritten: 'Handwritten · Caveat',
+  anuphan: 'Anuphan', thaiSerif: 'Noto Serif Thai', kanit: 'Kanit', mali: 'Mali',
+  dmSans: 'DM Sans', spaceGrotesk: 'Space Grotesk', playfair: 'Playfair Display',
+  cormorant: 'Cormorant Garamond', oswald: 'Oswald', robotoMono: 'Roboto Mono',
 };
 
 export type CoverText = {
