@@ -1,30 +1,25 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { applyCoverPreset, coverFontLabels, coverFonts, createAlbumCover, createCoverText, type AlbumCover, type CoverPreset, type CoverText } from './albumCover';
+import { applyCoverPreset, coverFontLabels, coverFonts, createCoverText, type AlbumCover, type CoverPreset, type CoverText } from './albumCover';
 import type { Messages } from './i18n';
 
-type Props = { value: AlbumCover; ink: string; copy: Messages; onChange: (value: AlbumCover) => void };
+type Props = { value: AlbumCover; ink: string; copy: Messages; onChange: (value: AlbumCover) => void; selected?: string; onSelect?: (id: string) => void; language?: 'th' | 'en' | 'ja' };
 
-const COVER_PRESETS: CoverPreset[] = ['classic', 'poster', 'cassette', 'vinyl', 'zine'];
-const COVER_PRESET_NAMES = ['Classic', 'Poster', 'Cassette', 'Vinyl', 'Zine'];
+const COVER_PRESETS: CoverPreset[] = ['minimal', 'fullPhoto', 'swiss', 'indie', 'vinyl', 'dreamy', 'classic', 'poster', 'cassette', 'zine'];
+const COVER_PRESET_NAMES = ['Minimal Gallery', 'Full Photo', 'Swiss Typography', 'Indie Film', 'Vinyl Sleeve', 'Dreamy Ambient', 'Classic', 'Poster', 'Cassette', 'Zine'];
 
 export function CoverPresets({ value, copy, onChange }: Omit<Props, 'ink'>) {
   return <div className="cover-presets"><p className="field-hint">{copy.coverPresetHint}</p><div>{COVER_PRESETS.map((preset, index) => {
-    const target = createAlbumCover(preset);
-    const selected = value.split === target.split && value.texts.length === target.texts.length
-      && target.texts.every((text, textIndex) => {
-        const current = value.texts[textIndex];
-        return current?.id === text.id && (Object.keys(text) as (keyof CoverText)[]).every(key => key === 'text' || key === 'visible' || current[key] === text[key]);
-      });
+    const selected = value.style === preset;
     return <button type="button" key={preset} className={`cover-preset ${preset}`} aria-pressed={selected} onClick={() => onChange(applyCoverPreset(value, preset))}>
       <span className="cover-sample" aria-hidden="true"><i /><b /><em /></span>
       <strong>{COVER_PRESET_NAMES[index]}</strong>
-      <small>{[copy.coverClassicHint, copy.coverPosterHint, copy.coverCassetteHint, copy.coverVinylHint, copy.coverZineHint][index]}</small>
+      <small>{preset === 'classic' ? copy.coverClassicHint : preset === 'poster' ? copy.coverPosterHint : preset === 'cassette' ? copy.coverCassetteHint : preset === 'vinyl' ? copy.coverVinylHint : preset === 'zine' ? copy.coverZineHint : '1:1 / iPhone'}</small>
     </button>;
   })}</div></div>;
 }
 
-function NumberField({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void }) {
+export function NumberField({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void }) {
   const [input, setInput] = useState(String(value));
   useEffect(() => { setInput(current => current.trim() !== '' && Number(current) === value ? current : String(value)); }, [value]);
   return <label className="cover-field">{label}<input type="number" min={min} max={max} step={step} value={input} onChange={event => {
@@ -37,13 +32,16 @@ function NumberField({ label, value, min, max, step, onChange }: { label: string
   }} /></label>;
 }
 
-export default function AlbumCoverEditor({ value, ink, copy, onChange }: Props) {
-  const [selected, setSelected] = useState(value.texts[0]?.id);
+export default function AlbumCoverEditor({ value, ink, copy, onChange, selected: externalSelected, onSelect, language = 'th' }: Props) {
+  const [localSelected, setLocalSelected] = useState(value.texts[0]?.id);
+  const selected = externalSelected ?? localSelected;
+  const setSelected = (id: string) => { setLocalSelected(id); onSelect?.(id); };
+  const extra = language === 'th' ? { duplicate: 'ทำสำเนา', back: 'ไปด้านหลัง', front: 'ไปด้านหน้า', lock: 'ล็อกตำแหน่ง', rotation: 'หมุนข้อความ (°)', shadow: 'เงาข้อความ', stroke: 'เส้นขอบข้อความ' } : language === 'ja' ? { duplicate: '複製', back: '背面へ', front: '前面へ', lock: '位置を固定', rotation: '文字の回転 (°)', shadow: '文字の影', stroke: '文字の縁取り' } : { duplicate: 'Duplicate', back: 'Move backward', front: 'Move forward', lock: 'Lock position', rotation: 'Text rotation (°)', shadow: 'Text shadow', stroke: 'Text outline' };
   const active = value.texts.find(text => text.id === selected) ?? value.texts[0];
   function change(patch: Partial<CoverText>) {
     if (active) onChange({ ...value, texts: value.texts.map(text => text.id === active.id ? { ...text, ...patch } : text) });
   }
-  function number(key: 'size' | 'weight' | 'x' | 'y' | 'width' | 'tracking' | 'lineHeight' | 'opacity', label: string, min: number, max: number, step = 1) {
+  function number(key: 'size' | 'weight' | 'x' | 'y' | 'width' | 'tracking' | 'lineHeight' | 'opacity' | 'rotation' | 'shadow' | 'stroke', label: string, min: number, max: number, step = 1) {
     return <NumberField label={label} value={active[key]} min={min} max={max} step={step} onChange={next => change({ [key]: next })} />;
   }
   return <div className="cover-editor">
@@ -58,6 +56,8 @@ export default function AlbumCoverEditor({ value, ink, copy, onChange }: Props) 
       onChange({ ...value, texts: [...value.texts, text] }); setSelected(text.id);
     }}><Plus size={14} />{copy.coverAddText}<span>{value.texts.length}/12</span></button>
     {active && <div className="cover-text-settings" key={active.id}>
+      <div className="cover-layer-actions"><button type="button" disabled={value.texts.length >= 12} onClick={() => { const text = { ...active, id: crypto.randomUUID(), x: Math.min(95, active.x + 2), y: Math.min(95, active.y + 2) }; onChange({ ...value, texts: [...value.texts, text] }); setSelected(text.id); }}>{extra.duplicate}</button>{([-1, 1] as const).map(direction => <button type="button" key={direction} disabled={value.texts.indexOf(active) + direction < 0 || value.texts.indexOf(active) + direction >= value.texts.length} onClick={() => { const texts = [...value.texts]; const index = texts.indexOf(active); [texts[index], texts[index + direction]] = [texts[index + direction], texts[index]]; onChange({ ...value, texts }); }}>{direction === -1 ? extra.back : extra.front}</button>)}</div>
+      <label className="cover-text-actions"><input type="checkbox" checked={active.locked} onChange={event => change({ locked: event.target.checked })} />{extra.lock}</label>
       <label className="field-label" htmlFor="cover-text">{copy.coverContent}</label>
       <textarea id="cover-text" rows={3} maxLength={1000} value={active.text} placeholder={copy.coverEmptyText} onChange={event => change({ text: event.target.value })} />
       <div className="cover-text-actions"><label><input type="checkbox" checked={active.visible} onChange={event => change({ visible: event.target.checked })} />{copy.coverVisible}</label>
@@ -73,6 +73,7 @@ export default function AlbumCoverEditor({ value, ink, copy, onChange }: Props) 
       <div className="color-row"><label htmlFor="cover-text-color">{copy.coverTextColor}</label><button className={`auto-button ${active.color === null ? 'active' : ''}`} aria-pressed={active.color === null} onClick={() => change({ color: null })}>{copy.coverInherit}</button><input id="cover-text-color" type="color" value={active.color ?? ink} onChange={event => change({ color: event.target.value })} /></div>
       <details className="cover-details" open><summary>{copy.coverPosition}</summary><p className="field-hint">{copy.coverPositionHint}</p><div className="cover-grid">{number('x', copy.coverX, 0, 95, 0.5)}{number('y', copy.coverY, 0, 95, 0.5)}{number('width', copy.coverWidth, 5, 100, 0.5)}{number('opacity', copy.coverOpacity, 0, 1, 0.05)}</div></details>
       <details className="cover-details"><summary>{copy.coverSpacing}</summary><div className="cover-grid">{number('tracking', copy.coverTracking, -2, 12, 0.1)}{number('lineHeight', copy.coverLineHeight, 0.8, 3, 0.1)}</div></details>
+      <div className="cover-grid">{number('rotation', extra.rotation, -180, 180)}{number('shadow', extra.shadow, 0, 20)}{number('stroke', extra.stroke, 0, 5, 0.5)}</div>
     </div>}
   </div>;
 }

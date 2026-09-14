@@ -6,11 +6,14 @@ import { canvasBlob, decodeImage, importImage } from './images';
 import { loadDraft, saveDraft } from './storage';
 import { prepareFonts, renderWallpaper } from './renderer';
 import Preview from './Preview';
-import AlbumCoverEditor, { CoverPresets } from './AlbumCoverEditor';
+import AlbumCoverEditor, { CoverPresets, NumberField } from './AlbumCoverEditor';
+import CoverStudio from './CoverStudio';
+import { switchCoverFormat } from './albumCover';
 import PlayerEditor, { PlayerBackground, PlayerPresets } from './PlayerEditor';
 import PolaroidEditor, { PolaroidPresets } from './PolaroidEditor';
 import ConcertTicketEditor, { TicketContent, TicketDecorations, TicketPaper, TicketPresets } from './ConcertTicketEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
+import './coverStudio.css';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
   return <label className="toggle-label"><span>{children}</span><input type="checkbox" role="switch" disabled={disabled} checked={checked} onChange={event => onChange(event.target.checked)} /><span className="toggle-track" aria-hidden="true" /></label>;
@@ -40,6 +43,9 @@ export default function App() {
   const [help, setHelp] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(true);
+  const [selectedCoverText, setSelectedCoverText] = useState('');
+  const history = useRef<{ past: Partial<Draft>[]; future: Partial<Draft>[]; time: number; key: string }>({ past: [], future: [], time: 0, key: '' });
+  const [, refreshHistory] = useState(0);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLElement>(null);
   const returnPosition = useRef<number | null>(null);
@@ -55,7 +61,7 @@ export default function App() {
   const photoRequired = !isTicket || draft.concertTicket.showPhoto;
   const autoBackground = isPlayer && ['photo', 'ambient'].includes(draft.player.backgroundMode);
   const isSquare = isCover && draft.albumCover.format === 'square';
-  const device = isSquare ? { name: 'album-cover', width: 2400, height: 2400, source: '' } : getDevice(draft.device);
+  const device = isSquare ? { name: 'album-cover', width: draft.albumCover.squareSize, height: draft.albumCover.squareSize, source: '' } : isCover && draft.albumCover.useCustomSize ? { name: 'custom-wallpaper', width: draft.albumCover.customWidth, height: draft.albumCover.customHeight, source: '' } : getDevice(draft.device);
   const timeValid = isTicket || isCover || (isPlayer && !draft.player.showProgress) || (isPolaroid && !draft.polaroid.showProgress) || validTimes(draft.elapsed, draft.duration);
   const foreground = isPlayer ? playerColors(draft).contentForeground : draft.foreground ?? automaticForeground(draft.background);
   const customForeground = isPlayer ? draft.player.foreground : draft.foreground;
@@ -127,9 +133,35 @@ export default function App() {
     }
   }
 
-  function update(patch: Partial<Draft>) {
+  function coverSnapshot(): Partial<Draft> {
+    const current = latest.current;
+    return { albumCover: current.albumCover, crop: current.crop, background: current.background, foreground: current.foreground, device: current.device };
+  }
+
+  function travelCover(direction: 'past' | 'future') {
+    const stack = history.current;
+    const snapshot = stack[direction].pop();
+    if (!snapshot) return;
+    stack[direction === 'past' ? 'future' : 'past'].push(coverSnapshot()); stack.time = 0;
+    update(snapshot, false); refreshHistory(value => value + 1);
+  }
+
+  function update(patch: Partial<Draft>, record = true) {
+    if (record && latest.current.templateId === 'albumCover' && !('image' in patch) && !('templateId' in patch) && Object.keys(patch).some(key => ['albumCover', 'crop', 'background', 'foreground', 'device'].includes(key))) {
+      const stack = history.current;
+      const changedCover = patch.albumCover ? Object.keys(patch.albumCover).filter(key => key !== 'texts' && patch.albumCover![key as keyof typeof patch.albumCover] !== latest.current.albumCover[key as keyof typeof patch.albumCover]) : [];
+      const changedText = patch.albumCover?.texts.flatMap(text => {
+        const previous = latest.current.albumCover.texts.find(item => item.id === text.id);
+        return previous ? Object.keys(text).filter(key => text[key as keyof typeof text] !== previous[key as keyof typeof text]).map(key => `${text.id}:${key}`) : [text.id];
+      });
+      const key = JSON.stringify([Object.keys(patch), changedCover, changedText, selectedCoverText]);
+      if (Date.now() - stack.time > 450 || key !== stack.key) { stack.past.push(coverSnapshot()); if (stack.past.length > 80) stack.past.shift(); }
+      stack.future = []; stack.time = Date.now(); stack.key = key; refreshHistory(value => value + 1);
+    }
+    if ('image' in patch || 'templateId' in patch) { history.current = { past: [], future: [], time: 0, key: '' }; }
     revision.current++;
     setSaveStatus('saving');
+    latest.current = { ...latest.current, ...patch };
     setDraft(previous => ({ ...previous, ...patch }));
     setDownload(null);
   }
@@ -194,12 +226,19 @@ export default function App() {
       <p>{copy.helpStorage}</p>
     </aside>}
 
-    <main id="main" className="studio">
+    <main id="main" className="studio template-studio">
+      <aside className={`template-library ${isCover ? 'cover-library' : ''}`} aria-labelledby="style-library-heading"><h2 id="style-library-heading" tabIndex={-1}>{copy.templateSectionTitle}</h2><fieldset disabled={!ready || busy || exporting}>
+        {isCover && <CoverPresets value={draft.albumCover} copy={copy} onChange={albumCover => update({ albumCover })} />}
+        {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
+        {isPolaroid && <PolaroidPresets value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
+        {isTicket && <TicketPresets value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />}
+      </fieldset></aside>
       <div className="workspace" ref={workspaceRef}>
         <div className="workspace-heading"><div><h1>{copy.headingPhoto} <span>{copy.headingMusic}</span></h1><p>{copy.subtitle}</p></div></div>
         <div className="preview-toolbar" id="preview" tabIndex={-1}><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
+        {isCover && <div className="cover-history"><button type="button" disabled={!ready || busy || exporting || !history.current.past.length} onClick={() => travelCover('past')}>{language === 'th' ? 'เลิกทำ' : language === 'ja' ? '元に戻す' : 'Undo'}</button><button type="button" disabled={!ready || busy || exporting || !history.current.future.length} onClick={() => travelCover('future')}>{language === 'th' ? 'ทำซ้ำ' : language === 'ja' ? 'やり直す' : 'Redo'}</button></div>}
         <div className={`preview-stage ${isSquare ? 'square-stage' : ''}`} style={{ '--preview-ratio': device.width / device.height } as CSSProperties}>
-          <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
+          <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} selectedText={selectedCoverText} onSelectText={setSelectedCoverText} onCover={albumCover => { if (ready && !busy && !exporting) update({ albumCover }); }} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
           <div className="stage-caption"><span>{template.number} / {copy[template.labelKey]}</span><span>{copy.makeYours}</span></div>
         </div>
         {!isSquare && <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> {copy.guides}</Toggle><span>{copy.guidesNote}</span></div>}
@@ -221,16 +260,15 @@ export default function App() {
           <Section number="01" title={copy.templateSectionTitle}>
             <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
             <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
-            {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
-            {isPolaroid && <PolaroidPresets value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
-            {isCover && <CoverPresets value={draft.albumCover} copy={copy} onChange={albumCover => update({ albumCover })} />}
-            {isTicket && <TicketPresets value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />}
+            <a href="#style-library-heading" onClick={() => document.getElementById('style-library-heading')?.focus()}>{language === 'th' ? 'เลือกสไตล์จากคลังเทมเพลต' : language === 'ja' ? 'テンプレートのスタイルを選択' : 'Choose from the style library'}</a>
           </Section>
 
           <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
-            {isCover && <><label className="sr-only" htmlFor="cover-format">{copy.coverFormat}</label><select id="cover-format" value={draft.albumCover.format} onChange={event => update({ albumCover: { ...draft.albumCover, format: event.target.value as 'square' | 'phone' } })}><option value="square">{copy.coverSquare}</option><option value="phone">{copy.coverPhone}</option></select></>}
+            {isCover && <><label className="sr-only" htmlFor="cover-format">{copy.coverFormat}</label><select id="cover-format" value={draft.albumCover.format} onChange={event => update(switchCoverFormat(draft.albumCover, draft.crop, event.target.value as 'square' | 'phone'))}><option value="square">{language === 'th' ? 'ปกจัตุรัส · 1:1' : language === 'ja' ? '正方形 · 1:1' : 'Square · 1:1'}</option><option value="phone">{copy.coverPhone}</option></select>
+              {isSquare ? <label className="field-label">{language === 'th' ? 'ขนาดไฟล์ PNG' : language === 'ja' ? 'PNGサイズ' : 'PNG dimensions'}<select aria-label={language === 'th' ? 'ขนาดไฟล์ PNG' : language === 'ja' ? 'PNGサイズ' : 'PNG dimensions'} value={draft.albumCover.squareSize} onChange={event => update({ albumCover: { ...draft.albumCover, squareSize: Number(event.target.value) } })}>{[1080, 2400, 3000].map(size => <option key={size} value={size}>{size} × {size}</option>)}</select></label> : <><Toggle checked={draft.albumCover.useCustomSize} onChange={useCustomSize => update({ albumCover: { ...draft.albumCover, useCustomSize } })}>{language === 'th' ? 'กำหนดขนาดเอง' : language === 'ja' ? 'カスタムサイズ' : 'Custom dimensions'}</Toggle>{draft.albumCover.useCustomSize && <div className="cover-grid">{(['customWidth', 'customHeight'] as const).map((key, index) => <NumberField key={key} label={language === 'th' ? index ? 'สูง (px)' : 'กว้าง (px)' : language === 'ja' ? index ? '高さ (px)' : '幅 (px)' : index ? 'Height (px)' : 'Width (px)'} min={320} max={4096} step={1} value={draft.albumCover[key]} onChange={value => update({ albumCover: { ...draft.albumCover, [key]: Math.round(value) } })} />)}</div>}</>}
+            </>}
             {!isSquare && <><label className="sr-only" htmlFor="device">{copy.device}</label>
-            <div className="select-wrap"><Smartphone size={16} /><select id="device" value={device.name} onChange={event => update({ device: event.target.value })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
+            <div className="select-wrap"><Smartphone size={16} /><select id="device" value={draft.device} onChange={event => update({ device: event.target.value, ...(isCover ? { albumCover: { ...draft.albumCover, useCustomSize: false } } : {}) })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
             <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div></>}
           </Section>
 
@@ -249,9 +287,10 @@ export default function App() {
             <TicketContent value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />
             <ConcertTicketEditor value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />
           </Section> : isCover ? <Section number="04" title={copy.coverLayout}>
-            <div className="zoom-heading"><label htmlFor="cover-split">{copy.coverSplit}</label><span>{draft.albumCover.split}%</span></div>
+            {['classic', 'poster', 'cassette', 'zine'].includes(draft.albumCover.style) && <><div className="zoom-heading"><label htmlFor="cover-split">{copy.coverSplit}</label><span>{draft.albumCover.split}%</span></div>
             <input id="cover-split" type="range" min="20" max="80" step="1" value={draft.albumCover.split} onChange={event => update({ albumCover: { ...draft.albumCover, split: Number(event.target.value) } })} />
-            <p className="field-hint">{copy.coverLayoutHint}</p>
+            <p className="field-hint">{copy.coverLayoutHint}</p></>}
+            <CoverStudio value={draft.albumCover} language={language} background={draft.background} foreground={draft.foreground} onChange={albumCover => update({ albumCover })} onColors={(background, foreground, albumCover) => update({ background, foreground, albumCover })} />
           </Section> : <Section number="04" title={copy.music}>
             <label className="field-label" htmlFor="title">{copy.title}</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder={copy.titlePlaceholder} />
             <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
@@ -274,7 +313,7 @@ export default function App() {
             {!isCover && !isTicket && <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>}
           </Section>
 
-          {isTicket ? <Section number="06" title={copy.ticketDecorations}><TicketDecorations value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section> : isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} onChange={albumCover => update({ albumCover })} /></Section> : <Section number="06" title={copy.signature}>
+          {isTicket ? <Section number="06" title={copy.ticketDecorations}><TicketDecorations value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section> : isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} language={language} selected={selectedCoverText} onSelect={setSelectedCoverText} onChange={albumCover => update({ albumCover })} /></Section> : <Section number="06" title={copy.signature}>
             <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
             {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
           </Section>}

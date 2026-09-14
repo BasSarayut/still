@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCoverPreset, coverCropRect, coverPhotoFrame, createAlbumCover, restoreAlbumCover, type CoverPreset } from './albumCover';
+import { albumPhotoFrame, applyCoverPreset, arrangeCover, coverCropRect, coverPhotoFrame, createAlbumCover, restoreAlbumCover, switchCoverFormat, type CoverPreset } from './albumCover';
 import { restoreDraft } from './model';
 
 const presets: CoverPreset[] = ['classic', 'poster', 'cassette', 'vinyl', 'zine'];
@@ -61,6 +61,45 @@ describe('album cover presets', () => {
 });
 
 describe('cover photo geometry', () => {
+  it('keeps independently edited compositions and crops across format switches and reloads', () => {
+    const square = createAlbumCover('minimal');
+    square.texts[1].x = 21; square.photoWidth = 61;
+    const squareCrop = { x: 0.2, y: 0.8, zoom: 2 };
+    const phone = switchCoverFormat(square, squareCrop, 'phone');
+    expect(phone.albumCover.texts.every(text => text.y >= 32 && text.y < 90)).toBe(true);
+    phone.albumCover.texts[1].text = 'เพลงใหม่'; phone.albumCover.texts[1].x = 44;
+    const phoneCrop = { x: 0.7, y: 0.4, zoom: 3 };
+    const returned = switchCoverFormat(restoreAlbumCover(phone.albumCover), phoneCrop, 'square');
+    expect(returned.crop).toEqual(squareCrop);
+    expect(returned.albumCover.photoWidth).toBe(61);
+    expect(returned.albumCover.texts[1]).toMatchObject({ x: 21, text: 'เพลงใหม่' });
+    const phoneAgain = switchCoverFormat(restoreAlbumCover(returned.albumCover), returned.crop, 'phone');
+    expect(phoneAgain.crop).toEqual(phoneCrop);
+    expect(phoneAgain.albumCover.texts[1]).toMatchObject({ x: 44, text: 'เพลงใหม่' });
+  });
+
+  it('round trips new styles and creates safe, distinct photo geometry in both formats', () => {
+    for (const style of ['minimal', 'fullPhoto', 'swiss', 'indie', 'vinyl', 'dreamy'] as const) {
+      const cover = createAlbumCover(style);
+      expect(restoreAlbumCover(cover)).toEqual(cover);
+      for (const format of ['square', 'phone'] as const) {
+        const layout = arrangeCover({ ...cover, format });
+        const height = format === 'square' ? 470 : 1022;
+        const frame = albumPhotoFrame(height, layout);
+        expect(frame.width).toBeGreaterThan(0); expect(frame.height).toBeGreaterThan(0);
+        expect(frame.left + frame.width).toBeLessThanOrEqual(470.0001);
+        expect(frame.top + frame.height).toBeLessThanOrEqual(height + 0.0001);
+      }
+    }
+  });
+
+  it('sanitizes effects and ignores recursively nested format snapshots', () => {
+    const cover = createAlbumCover('dreamy');
+    const restored = restoreAlbumCover({ ...cover, grain: Infinity, photoWidth: -10, photoRotation: 900, gradientColor: 'bad', layouts: { phone: { layout: { ...cover, layouts: { square: { layout: cover } } }, crop: { x: -2, y: 9, zoom: 30 } } } });
+    expect(restored).toMatchObject({ grain: 0, photoWidth: 5, photoRotation: 180, gradientColor: '#cfaea2' });
+    expect(restored.layouts.phone?.crop).toEqual({ x: 0, y: 1, zoom: 4 });
+    expect(restored.layouts.phone?.layout).not.toHaveProperty('layouts');
+  });
   it('fills every split and aspect without stretching or sampling outside the image', () => {
     for (const [width, height] of [[1800, 800], [800, 1800], [1200, 1200]]) {
       for (const canvasHeight of [470, 1022]) for (const split of [20, 50, 80]) {

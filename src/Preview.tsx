@@ -4,24 +4,25 @@ import { automaticForeground, clamp, playerColors, type Crop, type Draft } from 
 import { composition, prepareFonts, renderWallpaper } from './renderer';
 import type { Device } from './devices';
 import type { Messages } from './i18n';
-import { coverCropRect, coverPhotoFrame } from './albumCover';
+import { albumPhotoFrame, coverCropRect, type AlbumCover } from './albumCover';
 import { playerLayout } from './musicPlayer';
 import { photoDragDelta, polaroidLayout } from './polaroid';
 import { ticketLayout } from './concertTicket';
 
-type Props = { copy: Messages; draft: Draft; image: HTMLImageElement | null; device: Device; onCrop: (crop: Crop) => void; onUpload: () => void };
+type Props = { copy: Messages; draft: Draft; image: HTMLImageElement | null; device: Device; onCrop: (crop: Crop) => void; onUpload: () => void; onCover?: (cover: AlbumCover) => void; selectedText?: string; onSelectText?: (id: string) => void };
 
-export default function Preview({ copy, draft, image, device, onCrop, onUpload }: Props) {
+export default function Preview({ copy, draft, image, device, onCrop, onUpload, onCover, selectedText, onSelectText }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const dragging = useRef<{ x: number; y: number; crop: Crop } | null>(null);
+  const textDrag = useRef<{ id: string; x: number; y: number; left: number; top: number } | null>(null);
   const height = 470 * device.height / device.width;
   const player = draft.templateId === 'custom' ? playerLayout(height, draft.player, draft.showPalette) : null;
   const standardFrame = composition(height);
   const polaroid = draft.templateId === 'polaroid' ? polaroidLayout(height, draft.polaroid, draft.showPalette) : null;
   const ticket = draft.templateId === 'concertTicket' ? ticketLayout(height, draft.concertTicket) : null;
   const rotated = ticket ?? polaroid;
-  const rotation = ticket ? draft.concertTicket.rotation : polaroid ? draft.polaroid.rotation : 0;
-  const frame = ticket ?? polaroid ?? player?.photo ?? (draft.templateId === 'albumCover' ? coverPhotoFrame(height, draft.albumCover.split) : { ...standardFrame, width: standardFrame.size, height: standardFrame.size });
+  const rotation = ticket ? draft.concertTicket.rotation : polaroid ? draft.polaroid.rotation : draft.templateId === 'albumCover' ? draft.albumCover.photoRotation : 0;
+  const frame = ticket ?? polaroid ?? player?.photo ?? (draft.templateId === 'albumCover' ? albumPhotoFrame(height, draft.albumCover) : { ...standardFrame, width: standardFrame.size, height: standardFrame.size });
   useEffect(() => {
     let cancelled = false;
     if (canvas.current) renderWallpaper(canvas.current, draft, image, device, 940, copy.emptyImage);
@@ -51,7 +52,7 @@ export default function Preview({ copy, draft, image, device, onCrop, onUpload }
   return <div className="wallpaper" style={{ aspectRatio: `${device.width}/${device.height}`, '--wallpaper-ink': ink } as CSSProperties}>
     <canvas ref={canvas} aria-label={`${copy.previewLabel} ${description}`} />
     {(!ticket || draft.concertTicket.showPhoto) && <button className={`artwork-hit ${image ? 'has-image' : ''}`} style={{ left: `${frame.left / 470 * 100}%`, top: `${frame.top / height * 100}%`, width: `${frame.width / 470 * 100}%`, height: `${frame.height / height * 100}%`, borderRadius: polaroid ? `${draft.polaroid.photoRadius / draft.polaroid.photoWidth * 100}% / ${draft.polaroid.photoRadius / polaroid.photoHeight * 100}%` : player ? `${player.photo.radius / frame.width * 100}% / ${player.photo.radius / frame.height * 100}%` : undefined,
-      transform: rotated ? `rotate(${rotation}deg)` : undefined,
+      transform: `rotate(${rotation}deg)`,
       transformOrigin: rotated ? `${(rotated.centerX - frame.left) / frame.width * 100}% ${(rotated.centerY - frame.top) / frame.height * 100}%` : undefined }}
       aria-label={image ? copy.dragPhoto : copy.uploadPhoto}
       onClick={() => { if (!image) onUpload(); }}
@@ -66,6 +67,11 @@ export default function Preview({ copy, draft, image, device, onCrop, onUpload }
       }}>
       {image && <span className="drag-hint"><Move size={13} /> {copy.dragHint}</span>}
     </button>}
+    {draft.templateId === 'albumCover' && draft.albumCover.texts.filter(text => text.visible && text.text).map(text => <button key={text.id} type="button" className={`cover-text-hit ${selectedText === text.id ? 'selected' : ''}`} aria-label={`${copy.coverContent}: ${text.text}`} style={{ left: `${text.x}%`, top: `${text.y}%`, width: `${Math.min(text.width, 100 - text.x)}%`, height: `${Math.max(text.size * text.lineHeight * text.text.split('\n').length, text.size * 1.3) / height * 100}%`, transform: `rotate(${text.rotation}deg)` }}
+      onPointerDown={event => { onSelectText?.(text.id); if (text.locked) return; event.currentTarget.setPointerCapture(event.pointerId); textDrag.current = { id: text.id, x: event.clientX, y: event.clientY, left: text.x, top: text.y }; }}
+      onPointerMove={event => { const drag = textDrag.current; if (!drag || drag.id !== text.id) return; const bounds = event.currentTarget.parentElement!.getBoundingClientRect(); onCover?.({ ...draft.albumCover, texts: draft.albumCover.texts.map(item => item.id === text.id ? { ...item, x: Math.max(0, Math.min(95, Math.round((drag.left + (event.clientX - drag.x) / bounds.width * 100) * 2) / 2)), y: Math.max(0, Math.min(95, Math.round((drag.top + (event.clientY - drag.y) / bounds.height * 100) * 2) / 2)) } : item) }); }}
+      onPointerUp={() => { textDrag.current = null; }} onPointerCancel={() => { textDrag.current = null; }} onFocus={() => onSelectText?.(text.id)}
+      onKeyDown={event => { if (text.locked || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return; event.preventDefault(); const step = event.shiftKey ? 5 : 0.5; onCover?.({ ...draft.albumCover, texts: draft.albumCover.texts.map(item => item.id === text.id ? { ...item, x: Math.max(0, Math.min(95, item.x + (event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0))), y: Math.max(0, Math.min(95, item.y + (event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0))) } : item) }); }} />)}
     {draft.showGuides && !(draft.templateId === 'albumCover' && draft.albumCover.format === 'square') && <div className="lock-guides" aria-label={copy.guidesLabel}>
       <div className="lock-date">{copy.previewDate}</div>
       <div className="lock-time">9:41</div>
