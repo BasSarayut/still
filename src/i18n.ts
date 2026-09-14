@@ -264,12 +264,26 @@ export function errorMessageKey(error: unknown, fallback: MessageKey): MessageKe
   return error instanceof Error && Object.hasOwn(th, error.message) ? error.message as MessageKey : fallback;
 }
 
+export function detectDeviceLanguage(): Language {
+  if (typeof navigator === 'undefined') return 'en';
+  const preferred = navigator.languages ?? (navigator.language ? [navigator.language] : []);
+  for (const lang of preferred) {
+    if (!lang) continue;
+    const prefix = lang.slice(0, 2).toLowerCase();
+    if (prefix === 'th' || prefix === 'en' || prefix === 'ja') {
+      return prefix;
+    }
+  }
+  return 'en';
+}
+
 export function useLanguage() {
   const [language, setLanguage] = useState<Language>(() => {
     try {
       const saved = localStorage.getItem(languageStorageKey);
-      return isLanguage(saved) ? saved : 'th';
-    } catch { return 'th'; }
+      if (isLanguage(saved)) return saved;
+    } catch {}
+    return detectDeviceLanguage();
   });
   useEffect(() => {
     document.documentElement.lang = language;

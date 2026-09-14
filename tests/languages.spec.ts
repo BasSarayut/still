@@ -39,3 +39,23 @@ test('unsupported saved language falls back to Thai', async ({ page }) => {
   await expect(page.locator('#language')).toHaveValue('th');
   await expect(page.locator('html')).toHaveAttribute('lang', 'th');
 });
+
+test('auto-detects device language and falls back to English when unsupported', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'language', { value: 'ja-JP', configurable: true });
+    Object.defineProperty(navigator, 'languages', { value: ['ja-JP', 'ja'], configurable: true });
+  });
+  await page.goto('/');
+  await expect(page.locator('#language')).toHaveValue('ja');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+});
+
+test('falls back to English when device language is unsupported or undefined', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'language', { value: 'fr-FR', configurable: true });
+    Object.defineProperty(navigator, 'languages', { value: ['fr-FR'], configurable: true });
+  });
+  await page.goto('/');
+  await expect(page.locator('#language')).toHaveValue('en');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
