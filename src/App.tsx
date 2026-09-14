@@ -14,6 +14,7 @@ import PolaroidEditor, { PolaroidPresets } from './PolaroidEditor';
 import ConcertTicketEditor, { TicketContent, TicketDecorations, TicketPaper, TicketPresets } from './ConcertTicketEditor';
 import { errorMessageKey, useLanguage, type MessageKey } from './i18n';
 import './coverStudio.css';
+import './inspector.css';
 
 function Toggle({ checked, onChange, children, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; children: ReactNode; disabled?: boolean }) {
   return <label className="toggle-label"><span>{children}</span><input type="checkbox" role="switch" disabled={disabled} checked={checked} onChange={event => onChange(event.target.checked)} /><span className="toggle-track" aria-hidden="true" /></label>;
@@ -22,6 +23,8 @@ function Toggle({ checked, onChange, children, disabled = false }: { checked: bo
 function Section({ number, title, children, extra }: { number: string; title: string; children: ReactNode; extra?: ReactNode }) {
   return <section className="control-section" aria-labelledby={`section-${number}`}><div className="section-heading"><h2 id={`section-${number}`} tabIndex={-1}>{title}</h2>{extra}</div>{children}</section>;
 }
+
+type EditorTab = 'photo' | 'text' | 'style' | 'size';
 
 const TEMPLATES: { id: TemplateId; number: string; badge: string; labelKey: 'template' | 'templatePolaroid' | 'templateAlbumCover' | 'templateConcertTicket' }[] = [
   { id: 'custom', number: '01', badge: 'THE MUSIC PLAYER', labelKey: 'template' },
@@ -43,6 +46,8 @@ export default function App() {
   const [help, setHelp] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(true);
+  const [activeTab, setActiveTab] = useState<EditorTab>('photo');
+  const tabScroll = useRef<Partial<Record<EditorTab, number>>>({});
   const [selectedCoverText, setSelectedCoverText] = useState('');
   const history = useRef<{ past: Partial<Draft>[]; future: Partial<Draft>[]; time: number; key: string }>({ past: [], future: [], time: 0, key: '' });
   const [, refreshHistory] = useState(0);
@@ -67,6 +72,23 @@ export default function App() {
   const customForeground = isPlayer ? draft.player.foreground : draft.foreground;
   const updateForeground = (foreground: string | null) => update(isPlayer ? { player: { ...draft.player, foreground } } : { foreground });
   const template = TEMPLATES.find(item => item.id === draft.templateId) ?? TEMPLATES[0];
+  const tabs = [
+    { id: 'photo', label: copy.inspectorPhoto, hint: copy.inspectorPhotoHint },
+    { id: 'text', label: copy.inspectorText, hint: copy.inspectorTextHint },
+    { id: 'style', label: copy.inspectorStyle, hint: copy.inspectorStyleHint },
+    { id: 'size', label: copy.inspectorSize, hint: copy.inspectorSizeHint },
+  ] as const;
+  const exportHint = !ready ? copy.loadingDraft : busy ? copy.preparingPhoto : exporting ? copy.exporting : !image && photoRequired ? copy.inspectorUpload : !timeValid ? copy.inspectorFixTime : copy.inspectorExport;
+  function selectTab(tab: EditorTab) {
+    const fields = editorRef.current?.querySelector('.editor-fields');
+    tabScroll.current[activeTab] = fields?.scrollTop ?? 0;
+    setActiveTab(tab);
+    lastEditorFocus.current = null;
+  }
+  useEffect(() => {
+    const fields = editorRef.current?.querySelector('.editor-fields');
+    if (fields) fields.scrollTop = tabScroll.current[activeTab] ?? 0;
+  }, [activeTab]);
   latest.current = draft;
 
   useEffect(() => {
@@ -159,6 +181,7 @@ export default function App() {
       stack.future = []; stack.time = Date.now(); stack.key = key; refreshHistory(value => value + 1);
     }
     if ('image' in patch || 'templateId' in patch) { history.current = { past: [], future: [], time: 0, key: '' }; }
+    if (patch.templateId && patch.templateId !== latest.current.templateId) { setActiveTab('photo'); tabScroll.current = {}; lastEditorFocus.current = null; returnPosition.current = null; }
     revision.current++;
     setSaveStatus('saving');
     latest.current = { ...latest.current, ...patch };
@@ -228,6 +251,10 @@ export default function App() {
 
     <main id="main" className="studio template-studio">
       <aside className={`template-library ${isCover ? 'cover-library' : ''}`} aria-labelledby="style-library-heading"><h2 id="style-library-heading" tabIndex={-1}>{copy.templateSectionTitle}</h2><fieldset disabled={!ready || busy || exporting}>
+<div className="library-template-picker">
+            <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
+            <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
+          </div>
         {isCover && <CoverPresets value={draft.albumCover} copy={copy} onChange={albumCover => update({ albumCover })} />}
         {isPlayer && <PlayerPresets value={draft.player} copy={copy} onChange={player => update({ player })} />}
         {isPolaroid && <PolaroidPresets value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
@@ -238,7 +265,7 @@ export default function App() {
         <div className="preview-toolbar" id="preview" tabIndex={-1}><span className="preview-label"><span className="live-dot" /> {copy.preview}</span><span>{device.width} × {device.height} <span className="pixels">PX</span></span></div>
         {isCover && <div className="cover-history"><button type="button" disabled={!ready || busy || exporting || !history.current.past.length} onClick={() => travelCover('past')}>{language === 'th' ? 'เลิกทำ' : language === 'ja' ? '元に戻す' : 'Undo'}</button><button type="button" disabled={!ready || busy || exporting || !history.current.future.length} onClick={() => travelCover('future')}>{language === 'th' ? 'ทำซ้ำ' : language === 'ja' ? 'やり直す' : 'Redo'}</button></div>}
         <div className={`preview-stage ${isSquare ? 'square-stage' : ''}`} style={{ '--preview-ratio': device.width / device.height } as CSSProperties}>
-          <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} selectedText={selectedCoverText} onSelectText={setSelectedCoverText} onCover={albumCover => { if (ready && !busy && !exporting) update({ albumCover }); }} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
+          <div className="preview-wrap"><Preview copy={copy} draft={draft} image={image} device={device} selectedText={selectedCoverText} onSelectText={id => { setSelectedCoverText(id); selectTab('text'); }} onCover={albumCover => { if (ready && !busy && !exporting) update({ albumCover }); }} onCrop={crop => { if (ready && !busy && !exporting) update({ crop }); }} onUpload={() => { if (ready && !busy && !exporting) uploadRef.current?.click(); }} /></div>
           <div className="stage-caption"><span>{template.number} / {copy[template.labelKey]}</span><span>{copy.makeYours}</span></div>
         </div>
         {!isSquare && <div className="preview-bottom"><Toggle disabled={!ready || busy || exporting} checked={draft.showGuides} onChange={showGuides => update({ showGuides })}><LockKeyhole size={14} /> {copy.guides}</Toggle><span>{copy.guidesNote}</span></div>}
@@ -246,33 +273,22 @@ export default function App() {
       </div>
 
       <aside className="inspector" id="editor" ref={editorRef} aria-label={copy.editorLabel}>
-        <div className="inspector-heading"><h2 id="editor-heading" tabIndex={-1}>{copy.editor}</h2><PencilLine size={20} aria-hidden="true" /></div>
-        <div className="save-status" role="status"><CheckCheck size={13} />{copy[saveStatus]}</div>
-        <nav className="editor-nav" aria-label={copy.editorNavigation}>
-          {[copy.navTemplate, copy.navSize, copy.navPhoto, isCover ? copy.navLayout : copy.navContent, copy.navColors, isCover ? copy.navContent : copy.navDetails].map((label, index) => <a key={index} href={`#section-0${index + 1}`} onClick={event => {
+        <div className="inspector-top">
+          <div className="inspector-heading"><h2 id="editor-heading" tabIndex={-1}>{copy[template.labelKey]}</h2><PencilLine size={17} aria-hidden="true" /></div>
+          <div className="save-status" role="status"><CheckCheck size={13} />{copy[saveStatus]}</div>
+        </div>
+        <div className="inspector-tabs" role="tablist" aria-label={copy.editorLabel}>
+          {tabs.map((tab, index) => <button type="button" role="tab" id={`inspector-tab-${tab.id}`} key={tab.id} aria-selected={activeTab === tab.id} aria-controls={`inspector-panel-${tab.id}`} tabIndex={activeTab === tab.id ? 0 : -1} onClick={event => { selectTab(tab.id); event.currentTarget.focus(); }} onKeyDown={event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
             event.preventDefault();
-            const heading = document.getElementById(`section-0${index + 1}`);
-            heading?.focus({ preventScroll: true });
-            heading?.scrollIntoView({ block: 'start' });
-          }}>{label}</a>)}
-        </nav>
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            selectTab(tabs[next].id); document.getElementById(`inspector-tab-${tabs[next].id}`)?.focus();
+          }}>{tab.label}</button>)}
+        </div>
+        <p className="inspector-tab-hint">{tabs.find(tab => tab.id === activeTab)?.hint}</p>
         <fieldset disabled={!ready || busy || exporting} className="editor-fields" onFocusCapture={event => { lastEditorFocus.current = event.target; }}>
-          <Section number="01" title={copy.templateSectionTitle}>
-            <label className="sr-only" htmlFor="template">{copy.templateSelectLabel}</label>
-            <div className="select-wrap"><LayoutTemplate size={16} /><select id="template" value={draft.templateId} onChange={event => update({ templateId: event.target.value as TemplateId })}>{TEMPLATES.map(item => <option key={item.id} value={item.id}>{copy[item.labelKey]}</option>)}</select><ChevronDown size={15} /></div>
-            <a href="#style-library-heading" onClick={() => document.getElementById('style-library-heading')?.focus()}>{language === 'th' ? 'เลือกสไตล์จากคลังเทมเพลต' : language === 'ja' ? 'テンプレートのスタイルを選択' : 'Choose from the style library'}</a>
-          </Section>
-
-          <Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
-            {isCover && <><label className="sr-only" htmlFor="cover-format">{copy.coverFormat}</label><select id="cover-format" value={draft.albumCover.format} onChange={event => update(switchCoverFormat(draft.albumCover, draft.crop, event.target.value as 'square' | 'phone'))}><option value="square">{language === 'th' ? 'ปกจัตุรัส · 1:1' : language === 'ja' ? '正方形 · 1:1' : 'Square · 1:1'}</option><option value="phone">{copy.coverPhone}</option></select>
-              {isSquare ? <label className="field-label">{language === 'th' ? 'ขนาดไฟล์ PNG' : language === 'ja' ? 'PNGサイズ' : 'PNG dimensions'}<select aria-label={language === 'th' ? 'ขนาดไฟล์ PNG' : language === 'ja' ? 'PNGサイズ' : 'PNG dimensions'} value={draft.albumCover.squareSize} onChange={event => update({ albumCover: { ...draft.albumCover, squareSize: Number(event.target.value) } })}>{[1080, 2400, 3000].map(size => <option key={size} value={size}>{size} × {size}</option>)}</select></label> : <><Toggle checked={draft.albumCover.useCustomSize} onChange={useCustomSize => update({ albumCover: { ...draft.albumCover, useCustomSize } })}>{language === 'th' ? 'กำหนดขนาดเอง' : language === 'ja' ? 'カスタムサイズ' : 'Custom dimensions'}</Toggle>{draft.albumCover.useCustomSize && <div className="cover-grid">{(['customWidth', 'customHeight'] as const).map((key, index) => <NumberField key={key} label={language === 'th' ? index ? 'สูง (px)' : 'กว้าง (px)' : language === 'ja' ? index ? '高さ (px)' : '幅 (px)' : index ? 'Height (px)' : 'Width (px)'} min={320} max={4096} step={1} value={draft.albumCover[key]} onChange={value => update({ albumCover: { ...draft.albumCover, [key]: Math.round(value) } })} />)}</div>}</>}
-            </>}
-            {!isSquare && <><label className="sr-only" htmlFor="device">{copy.device}</label>
-            <div className="select-wrap"><Smartphone size={16} /><select id="device" value={draft.device} onChange={event => update({ device: event.target.value, ...(isCover ? { albumCover: { ...draft.albumCover, useCustomSize: false } } : {}) })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
-            <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div></>}
-          </Section>
-
-          <Section number="03" title={copy.photo} extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>{copy.removePhoto}</button>}>
+<div id="inspector-panel-photo" role="tabpanel" aria-labelledby="inspector-tab-photo" hidden={activeTab !== 'photo'} tabIndex={0}>
+<Section number="03" title={copy.photo} extra={image && <button className="text-button" onClick={() => { setImage(null); update({ image: null, crop: initialCrop }); }}>{copy.removePhoto}</button>}>
             <input ref={uploadRef} className="sr-only" id="photo-upload" aria-label={copy.uploadPhoto} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={chooseFile} tabIndex={-1} />
             <button className={`upload-zone ${dragOver ? 'drag-over' : ''} ${image ? 'with-image' : ''}`} onClick={() => uploadRef.current?.click()}
               onDragOver={event => { event.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)}
@@ -283,26 +299,21 @@ export default function App() {
             {image && <div className="crop-controls"><div className="zoom-heading"><label htmlFor="zoom">{copy.zoom}</label><span>{draft.crop.zoom.toFixed(2)}×</span><button className="text-button" onClick={() => update({ crop: initialCrop })}><RotateCcw size={12} /> {copy.center}</button></div><div className="range-row"><Minus size={13} /><input id="zoom" type="range" min="1" max="4" step="0.01" value={draft.crop.zoom} onChange={event => update({ crop: { ...draft.crop, zoom: Number(event.target.value) } })} /><Plus size={13} /></div><p className="field-hint">{copy.cropHint}</p></div>}
           </Section>
 
-          {isTicket ? <Section number="04" title={copy.ticketContent}>
-            <TicketContent value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />
-            <ConcertTicketEditor value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} />
-          </Section> : isCover ? <Section number="04" title={copy.coverLayout}>
-            {['classic', 'poster', 'cassette', 'zine'].includes(draft.albumCover.style) && <><div className="zoom-heading"><label htmlFor="cover-split">{copy.coverSplit}</label><span>{draft.albumCover.split}%</span></div>
-            <input id="cover-split" type="range" min="20" max="80" step="1" value={draft.albumCover.split} onChange={event => update({ albumCover: { ...draft.albumCover, split: Number(event.target.value) } })} />
-            <p className="field-hint">{copy.coverLayoutHint}</p></>}
-            <CoverStudio value={draft.albumCover} language={language} background={draft.background} foreground={draft.foreground} onChange={albumCover => update({ albumCover })} onColors={(background, foreground, albumCover) => update({ background, foreground, albumCover })} />
-          </Section> : <Section number="04" title={copy.music}>
-            <label className="field-label" htmlFor="title">{copy.title}</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder={copy.titlePlaceholder} />
-            <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
-            <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
-            {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
-            {isPolaroid && <><Toggle checked={draft.polaroid.showProgress} onChange={showProgress => update({ polaroid: { ...draft.polaroid, showProgress } })}>{copy.showProgress}</Toggle>
-            <Toggle checked={draft.polaroid.showPauseGlyph} onChange={showPauseGlyph => update({ polaroid: { ...draft.polaroid, showPauseGlyph } })}>{copy.showPauseGlyph}</Toggle>
-            <PolaroidEditor value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} /></>}
-            {isPlayer && <PlayerEditor value={draft.player} copy={copy} ink={foreground} onChange={player => update({ player })} />}
-          </Section>}
 
-          <Section number="05" title={copy.colors} extra={<span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
+</div>
+<div id="inspector-panel-text" role="tabpanel" aria-labelledby="inspector-tab-text" hidden={activeTab !== 'text'} tabIndex={0}>
+{isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} language={language} selected={selectedCoverText} onSelect={setSelectedCoverText} onChange={albumCover => update({ albumCover })} /></Section> : isTicket ? <Section number="04" title={copy.ticketContent}><TicketContent value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section> : <><Section number="04" title={copy.music}>            <label className="field-label" htmlFor="title">{copy.title}</label><input id="title" maxLength={120} value={draft.title} onChange={event => update({ title: event.target.value })} placeholder={copy.titlePlaceholder} />
+            <label className="field-label" htmlFor="artist">{copy.artist}</label><input id="artist" maxLength={100} value={draft.artist} onChange={event => update({ artist: event.target.value })} placeholder={copy.artistPlaceholder} />
+
+{isPlayer && <PlayerEditor panel="text" value={draft.player} copy={copy} ink={foreground} onChange={player => update({ player })} />}
+{isPolaroid && <PolaroidEditor panel="text" value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} />}
+</Section><Section number="06" title={copy.signature}>
+            <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
+            {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
+          </Section></>}
+</div>
+<div id="inspector-panel-style" role="tabpanel" aria-labelledby="inspector-tab-style" hidden={activeTab !== 'style'} tabIndex={0}>
+<Section number="05" title={copy.colors} extra={<span className="mini-label">{image ? copy.extractedColors : copy.palette}</span>}>
             {isPlayer && <PlayerBackground value={draft.player} copy={copy} onChange={player => update({ player })} />}
             {!autoBackground && <><div className="swatches">{draft.palette.map((color, index) => <button key={`${index}-${color}`} className={draft.background.toLowerCase() === color.toLowerCase() ? 'selected' : ''} onClick={() => update({ background: color })} aria-label={`${copy.chooseBackground} ${color}`} aria-pressed={draft.background.toLowerCase() === color.toLowerCase()}><span style={{ background: color, color: automaticForeground(color) }}>{draft.background.toLowerCase() === color.toLowerCase() && <Check size={17} />}</span><small>{color.slice(1).toUpperCase()}</small></button>)}</div>
             <div className="color-row"><label htmlFor="background">{copy.background}</label><span>{draft.background.toUpperCase()}</span><input id="background" type="color" value={draft.background} onChange={event => update({ background: event.target.value })} /></div>
@@ -313,16 +324,40 @@ export default function App() {
             {!isCover && !isTicket && <Toggle checked={draft.showPalette} onChange={showPalette => update({ showPalette })}>{copy.showPalette}</Toggle>}
           </Section>
 
-          {isTicket ? <Section number="06" title={copy.ticketDecorations}><TicketDecorations value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section> : isCover ? <Section number="06" title={copy.coverTypography}><AlbumCoverEditor value={draft.albumCover} ink={foreground} copy={copy} language={language} selected={selectedCoverText} onSelect={setSelectedCoverText} onChange={albumCover => update({ albumCover })} /></Section> : <Section number="06" title={copy.signature}>
-            <Toggle checked={draft.showCredit} onChange={showCredit => update({ showCredit })}>{copy.showCredit}</Toggle>
-            {draft.showCredit && <><label className="sr-only" htmlFor="credit">{copy.credit}</label><input id="credit" maxLength={80} value={draft.credit} onChange={event => update({ credit: event.target.value })} placeholder={copy.creditPlaceholder} /></>}
-          </Section>}
+
+{isCover ? <Section number="07" title={copy.coverLayout}>
+            {['classic', 'poster', 'cassette', 'zine'].includes(draft.albumCover.style) && <><div className="zoom-heading"><label htmlFor="cover-split">{copy.coverSplit}</label><span>{draft.albumCover.split}%</span></div>
+            <input id="cover-split" type="range" min="20" max="80" step="1" value={draft.albumCover.split} onChange={event => update({ albumCover: { ...draft.albumCover, split: Number(event.target.value) } })} />
+            <p className="field-hint">{copy.coverLayoutHint}</p></>}
+            <CoverStudio value={draft.albumCover} language={language} background={draft.background} foreground={draft.foreground} onChange={albumCover => update({ albumCover })} onColors={(background, foreground, albumCover) => update({ background, foreground, albumCover })} />
+          </Section> : isTicket ? <><Section number="07" title={copy.coverLayout}><ConcertTicketEditor value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section><Section number="06" title={copy.ticketDecorations}><TicketDecorations value={draft.concertTicket} copy={copy} onChange={concertTicket => update({ concertTicket })} /></Section></> : <Section number="07" title={isPlayer ? copy.playerPlayback : copy.polaroidFrame}>
+            <div className="time-fields"><div><label className="field-label" htmlFor="elapsed">{copy.elapsed}</label><input id="elapsed" maxLength={6} value={draft.elapsed} onChange={event => update({ elapsed: event.target.value })} placeholder="0:42" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div><span>/</span><div><label className="field-label" htmlFor="duration">{copy.duration}</label><input id="duration" maxLength={6} value={draft.duration} onChange={event => update({ duration: event.target.value })} placeholder="4:18" aria-invalid={!timeValid} aria-describedby={!timeValid ? 'time-error' : undefined} /></div></div>
+            {!timeValid && <p id="time-error" className="field-error">{copy.timeError}</p>}
+
+{isPlayer && <PlayerEditor panel="style" value={draft.player} copy={copy} ink={foreground} onChange={player => update({ player })} />}
+{isPolaroid && <><Toggle checked={draft.polaroid.showProgress} onChange={showProgress => update({ polaroid: { ...draft.polaroid, showProgress } })}>{copy.showProgress}</Toggle><Toggle checked={draft.polaroid.showPauseGlyph} onChange={showPauseGlyph => update({ polaroid: { ...draft.polaroid, showPauseGlyph } })}>{copy.showPauseGlyph}</Toggle><PolaroidEditor panel="style" value={draft.polaroid} copy={copy} onChange={polaroid => update({ polaroid })} /></>}
+</Section>}
+</div>
+<div id="inspector-panel-size" role="tabpanel" aria-labelledby="inspector-tab-size" hidden={activeTab !== 'size'} tabIndex={0}>
+<Section number="02" title={isCover ? copy.coverFormat : copy.screen}>
+            {isCover && <><label className="sr-only" htmlFor="cover-format">{copy.coverFormat}</label><select id="cover-format" value={draft.albumCover.format} onChange={event => update(switchCoverFormat(draft.albumCover, draft.crop, event.target.value as 'square' | 'phone'))}><option value="square">{language === 'th' ? 'ปกจัตุรัส · 1:1' : language === 'ja' ? '正方形 · 1:1' : 'Square · 1:1'}</option><option value="phone">{copy.coverPhone}</option></select>
+              {isSquare ? <label className="field-label">{language === 'th' ? 'ขนาดไฟล์ PNG' : language === 'ja' ? 'PNGサイズ' : 'PNG dimensions'}<select aria-label={language === 'th' ? 'ขนาดไฟล์ PNG' : language === 'ja' ? 'PNGサイズ' : 'PNG dimensions'} value={draft.albumCover.squareSize} onChange={event => update({ albumCover: { ...draft.albumCover, squareSize: Number(event.target.value) } })}>{[1080, 2400, 3000].map(size => <option key={size} value={size}>{size} × {size}</option>)}</select></label> : <><Toggle checked={draft.albumCover.useCustomSize} onChange={useCustomSize => update({ albumCover: { ...draft.albumCover, useCustomSize } })}>{language === 'th' ? 'กำหนดขนาดเอง' : language === 'ja' ? 'カスタムサイズ' : 'Custom dimensions'}</Toggle>{draft.albumCover.useCustomSize && <div className="cover-grid">{(['customWidth', 'customHeight'] as const).map((key, index) => <NumberField key={key} label={language === 'th' ? index ? 'สูง (px)' : 'กว้าง (px)' : language === 'ja' ? index ? '高さ (px)' : '幅 (px)' : index ? 'Height (px)' : 'Width (px)'} min={320} max={4096} step={1} value={draft.albumCover[key]} onChange={value => update({ albumCover: { ...draft.albumCover, [key]: Math.round(value) } })} />)}</div>}</>}
+            </>}
+            {!isSquare && <><label className="sr-only" htmlFor="device">{copy.device}</label>
+            <div className="select-wrap"><Smartphone size={16} /><select id="device" value={draft.device} onChange={event => update({ device: event.target.value, ...(isCover ? { albumCover: { ...draft.albumCover, useCustomSize: false } } : {}) })}>{devices.map(item => <option key={item.name}>{item.name}</option>)}</select><ChevronDown size={15} /></div>
+            <div className="field-footnote"><span>{device.width} × {device.height} px</span><a href={device.source} target="_blank" rel="noreferrer">{copy.appleSize} <ArrowUpRight size={11} /></a></div></>}
+          </Section>
+
+
+</div>
         </fieldset>
         <div className="export-area">
+          <div className="export-metadata"><span>PNG</span><span>{device.width} × {device.height} px</span><span>{copy.noWatermark}</span></div>
           {error && <div className="error-message" role="alert">{copy[error]}<button className="icon-button" aria-label={copy.dismissError} onClick={() => setError(null)}><X size={15} /></button></div>}
           {download && <div className="download-result" role="status"><strong><Check size={15} /> {copy.pngReady}</strong><p>{copy.downloadRetry} <a href={download.url} download={download.file.name}>{copy.saveAgain}</a></p>{navigator.canShare?.({ files: [download.file] }) && <button className="share-button" onClick={() => void sharePng()}><Share2 size={15} /> {copy.share}</button>}</div>}
-          <div className="export-actions"><button className="jump-preview" onClick={switchWorkspace}>{previewVisible ? <PencilLine size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}{previewVisible ? copy.backToEditor : copy.viewPreview}</button><button className="export-button" disabled={!ready || (!image && photoRequired) || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}</button></div>
-          <p className="export-note">{!image && photoRequired ? copy.startHint : !image ? copy.ticketNoPhotoHint : `${device.width} × ${device.height} px · ${copy.noWatermark}`}</p>
+          <div className="export-actions"><button className="jump-preview" onClick={switchWorkspace}>{previewVisible ? <PencilLine size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}{previewVisible ? copy.backToEditor : copy.viewPreview}</button><button className="export-button" aria-describedby="export-hint" disabled={!ready || (!image && photoRequired) || !timeValid || busy || exporting} onClick={() => void exportPng()}>{exporting ? <LoaderCircle className="spin" size={18} /> : <ArrowDownToLine size={18} />}{exporting ? copy.exporting : copy.download}</button></div>
+          <p className="export-note" id="export-hint">{exportHint}</p>
+          {ready && !busy && !exporting && ((!image && photoRequired) || !timeValid) && <button type="button" className="export-recovery" onClick={() => { selectTab(!image && photoRequired ? 'photo' : 'style'); editorRef.current?.scrollIntoView({ block: 'start' }); }}>{!image && photoRequired ? copy.photo : copy.inspectorFixTime}<ArrowUpRight size={13} /></button>}
         </div>
       </aside>
     </main>

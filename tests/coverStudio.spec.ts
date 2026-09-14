@@ -1,3 +1,4 @@
+import { revealInspector, expandInspector } from './inspector';
 import { expect, test } from '@playwright/test';
 
 test('cover studio styles, layers, history, saved styles and separate phone composition', async ({ page }, testInfo) => {
@@ -5,8 +6,8 @@ test('cover studio styles, layers, history, saved styles and separate phone comp
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('#template')).toBeEnabled();
-  await page.locator('#language').selectOption('en');
-  await page.locator('#template').selectOption('albumCover');
+  await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('en');
+  await revealInspector(page.locator('#template')); await page.locator('#template').selectOption('albumCover');
   const picture = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 1000;
     const context = canvas.getContext('2d')!;
@@ -20,37 +21,37 @@ test('cover studio styles, layers, history, saved styles and separate phone comp
   await expect(page.getByRole('button', { name: 'Download PNG', exact: true })).toBeEnabled();
   const renders = new Set<string>();
   for (const style of ['minimal', 'fullPhoto', 'swiss', 'indie', 'vinyl', 'dreamy']) {
-    await page.locator(`.cover-preset.${style}`).click();
+    await revealInspector(page.locator(`.cover-preset.${style}`)); await page.locator(`.cover-preset.${style}`).click();
     await expect(page.locator(`.cover-preset.${style}`)).toHaveAttribute('aria-pressed', 'true');
     renders.add(await page.locator('.wallpaper canvas').evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL()));
     await page.locator('.wallpaper').screenshot({ path: testInfo.outputPath(`${style}.png`) });
   }
   expect(renders.size).toBe(6);
-  await page.locator('.cover-preset.minimal').click();
-  await page.locator('.cover-text-list button').nth(1).click();
-  await page.locator('#cover-text').fill('ความทรงจำ / MEMORIES');
-  await page.getByLabel('Horizontal (%)', { exact: true }).fill('23');
-  await page.getByLabel('Vertical (%)', { exact: true }).fill('15');
+  await revealInspector(page.locator('.cover-preset.minimal')); await page.locator('.cover-preset.minimal').click();
+  await revealInspector(page.locator('.cover-text-list button').nth(1)); await page.locator('.cover-text-list button').nth(1).click();
+  await revealInspector(page.locator('#cover-text')); await page.locator('#cover-text').fill('ความทรงจำ / MEMORIES');
+  await revealInspector(page.getByLabel('Horizontal (%)', { exact: true })); await page.getByLabel('Horizontal (%)', { exact: true }).fill('23');
+  await revealInspector(page.getByLabel('Vertical (%)', { exact: true })); await page.getByLabel('Vertical (%)', { exact: true }).fill('15');
   await page.getByRole('button', { name: 'Duplicate', exact: true }).click();
   await expect(page.locator('.cover-text-list button')).toHaveCount(5);
   await page.getByRole('button', { name: 'Move backward', exact: true }).click();
-  await page.getByLabel('Lock position').check();
-  await page.getByLabel('Text rotation (°)').fill('-6');
-  await page.getByLabel('Text shadow', { exact: true }).fill('3');
-  await page.getByLabel('Text outline', { exact: true }).fill('1');
-  await page.locator('#cover-format').selectOption('phone');
+  await revealInspector(page.getByLabel('Lock position')); await page.getByLabel('Lock position').check();
+  await revealInspector(page.getByLabel('Text rotation (°)')); await page.getByLabel('Text rotation (°)').fill('-6');
+  await revealInspector(page.getByLabel('Text shadow', { exact: true })); await page.getByLabel('Text shadow', { exact: true }).fill('3');
+  await revealInspector(page.getByLabel('Text outline', { exact: true })); await page.getByLabel('Text outline', { exact: true }).fill('1');
+  await revealInspector(page.locator('#cover-format')); await page.locator('#cover-format').selectOption('phone');
   await expect(page.locator('.lock-guides')).toBeVisible();
-  await page.locator('.cover-text-list button').nth(1).click();
-  await page.getByLabel('Horizontal (%)', { exact: true }).fill('40');
-  await page.locator('#cover-text').fill('SAME SONG');
-  await page.locator('#cover-format').selectOption('square');
+  await revealInspector(page.locator('.cover-text-list button').nth(1)); await page.locator('.cover-text-list button').nth(1).click();
+  await revealInspector(page.getByLabel('Horizontal (%)', { exact: true })); await page.getByLabel('Horizontal (%)', { exact: true }).fill('40');
+  await revealInspector(page.locator('#cover-text')); await page.locator('#cover-text').fill('SAME SONG');
+  await revealInspector(page.locator('#cover-format')); await page.locator('#cover-format').selectOption('square');
   await expect(page.getByLabel('Horizontal (%)', { exact: true })).toHaveValue('23');
   await expect(page.locator('#cover-text')).toHaveValue('SAME SONG');
-  await page.getByText('My styles', { exact: true }).click();
-  await page.getByLabel('Style name', { exact: true }).fill('My gallery');
+  await expandInspector(page, 'My styles');
+  await revealInspector(page.getByLabel('Style name', { exact: true })); await page.getByLabel('Style name', { exact: true }).fill('My gallery');
   await page.getByRole('button', { name: 'Save style', exact: true }).click();
   await expect(page.locator('.cover-saved-row')).toContainText('My gallery');
-  await page.getByLabel('Photo width (%)', { exact: true }).fill('52');
+  await revealInspector(page.getByLabel('Photo width (%)', { exact: true })); await page.getByLabel('Photo width (%)', { exact: true }).fill('52');
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.getByLabel('Photo width (%)', { exact: true })).toHaveValue('68');
   await page.getByRole('button', { name: 'Redo', exact: true }).click();
@@ -60,18 +61,18 @@ test('cover studio styles, layers, history, saved styles and separate phone comp
   await expect(page.getByRole('status').first()).toContainText('Saved on this device');
   await page.reload();
   await expect(page.locator('.cover-preset.minimal')).toHaveAttribute('aria-pressed', 'true');
-  await page.locator('#cover-format').selectOption('phone');
-  await page.locator('.cover-text-list button').nth(1).click();
+  await revealInspector(page.locator('#cover-format')); await page.locator('#cover-format').selectOption('phone');
+  await revealInspector(page.locator('.cover-text-list button').nth(1)); await page.locator('.cover-text-list button').nth(1).click();
   await expect(page.getByLabel('Horizontal (%)', { exact: true })).toHaveValue('40');
   const hit = page.locator('.cover-text-hit').nth(1);
-  await hit.focus(); await hit.press('ArrowRight');
+  await revealInspector(hit); await hit.focus(); await revealInspector(hit); await hit.press('ArrowRight');
   await expect(page.getByLabel('Horizontal (%)', { exact: true })).toHaveValue('40.5');
-  await page.getByLabel('Custom dimensions', { exact: true }).check();
-  await page.getByLabel('Width (px)', { exact: true }).fill('1200');
-  await page.getByLabel('Height (px)', { exact: true }).fill('2600');
+  await revealInspector(page.getByLabel('Custom dimensions', { exact: true })); await page.getByLabel('Custom dimensions', { exact: true }).check();
+  await revealInspector(page.getByLabel('Width (px)', { exact: true })); await page.getByLabel('Width (px)', { exact: true }).fill('1200');
+  await revealInspector(page.getByLabel('Height (px)', { exact: true })); await page.getByLabel('Height (px)', { exact: true }).fill('2600');
   await expect(page.locator('.preview-toolbar')).toContainText('1200 × 2600');
-  await page.locator('#cover-format').selectOption('square');
-  await page.getByLabel('PNG dimensions', { exact: true }).selectOption('3000');
+  await revealInspector(page.locator('#cover-format')); await page.locator('#cover-format').selectOption('square');
+  await revealInspector(page.getByLabel('PNG dimensions', { exact: true })); await page.getByLabel('PNG dimensions', { exact: true }).selectOption('3000');
   await expect(page.locator('.preview-toolbar')).toContainText('3000 × 3000');
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download PNG', exact: true }).click(); await download;

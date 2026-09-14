@@ -1,7 +1,8 @@
+import { revealInspector, expandInspector } from './inspector';
 import { expect, test, type Page } from '@playwright/test';
 
 async function setup(page: Page) {
-  await page.goto('/'); await expect(page.locator('#template')).toBeEnabled(); await page.locator('#language').selectOption('en');
+  await page.goto('/'); await expect(page.locator('#template')).toBeEnabled(); await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('en');
   const image = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 800;
     const ctx = canvas.getContext('2d')!, sky = ctx.createLinearGradient(0, 0, 1200, 800);
@@ -18,14 +19,14 @@ test('new player presets keep personal content and crop, with working non-square
   test.setTimeout(90000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await setup(page);
-  await page.locator('#title').fill('เพลงของเรา / Our song'); await page.locator('#artist').fill('THE EVENING LIGHT');
-  await page.locator('#background').fill('#e9e2d7'); await page.locator('#zoom').fill('2');
-  await page.getByRole('switch', { name: 'Lock Screen preview', exact: true }).uncheck();
+  await revealInspector(page.locator('#title')); await page.locator('#title').fill('เพลงของเรา / Our song'); await revealInspector(page.locator('#artist')); await page.locator('#artist').fill('THE EVENING LIGHT');
+  await revealInspector(page.locator('#background')); await page.locator('#background').fill('#e9e2d7'); await revealInspector(page.locator('#zoom')); await page.locator('#zoom').fill('2');
+  await page.getByRole('switch', { includeHidden: true, name: 'Lock Screen preview', exact: true }).uncheck();
   await page.getByRole('button', { name: 'Lyric Focus', exact: true }).click();
-  await page.locator('#player-lyrics').fill('เก็บเพลงนี้ไว้\n君と見た夕暮れ\nA moment to remember');
-  await page.locator('#player-extraText').fill('CHIANG MAI · OUR LITTLE PLAYLIST');
+  await revealInspector(page.locator('#player-lyrics')); await page.locator('#player-lyrics').fill('เก็บเพลงนี้ไว้\n君と見た夕暮れ\nA moment to remember');
+  await revealInspector(page.locator('#player-extraText')); await page.locator('#player-extraText').fill('CHIANG MAI · OUR LITTLE PLAYLIST');
   await page.getByRole('button', { name: 'Vinyl Session', exact: true }).click();
-  await page.locator('#player-recordLabel').fill('SIDE B · 007');
+  await revealInspector(page.locator('#player-recordLabel')); await page.locator('#player-recordLabel').fill('SIDE B · 007');
   for (const name of ['Mini Player', 'Glass Player', 'Lyric Focus', 'Vinyl Session']) {
     await page.getByRole('button', { name, exact: true }).click();
     await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -34,12 +35,12 @@ test('new player presets keep personal content and crop, with working non-square
     await page.locator('.wallpaper').screenshot({ path: testInfo.outputPath(`${name}.png`) });
   }
   await page.getByRole('button', { name: 'Mini Player', exact: true }).click();
-  await page.getByText('Artwork & layout', { exact: true }).click();
-  await page.locator('#player-artworkShape').selectOption('portrait'); await page.locator('#player-artworkSide').selectOption('right');
-  await page.getByText('Player appearance', { exact: true }).click();
-  await page.locator('#player-progressStyle').selectOption('waveform'); await page.locator('#player-progressThumb').selectOption('ring');
-  await page.locator('#player-controls').selectOption('full');
-  for (const name of ['Show previous track', 'Show next track', 'Show shuffle', 'Show repeat']) await page.getByRole('switch', { name, exact: true }).uncheck();
+  await expandInspector(page, 'Artwork & layout');
+  await revealInspector(page.locator('#player-artworkShape')); await page.locator('#player-artworkShape').selectOption('portrait'); await revealInspector(page.locator('#player-artworkSide')); await page.locator('#player-artworkSide').selectOption('right');
+  await expandInspector(page, 'Player appearance');
+  await revealInspector(page.locator('#player-progressStyle')); await page.locator('#player-progressStyle').selectOption('waveform'); await revealInspector(page.locator('#player-progressThumb')); await page.locator('#player-progressThumb').selectOption('ring');
+  await revealInspector(page.locator('#player-controls')); await page.locator('#player-controls').selectOption('full');
+  for (const name of ['Show previous track', 'Show next track', 'Show shuffle', 'Show repeat']) await page.getByRole('switch', { includeHidden: true, name, exact: true }).uncheck();
   const photo = page.locator('.artwork-hit'); await photo.scrollIntoViewIfNeeded();
   const frame = (await photo.boundingBox())!;
   expect(frame.width / frame.height).toBeCloseTo(0.75, 2);
@@ -51,15 +52,15 @@ test('new player presets keep personal content and crop, with working non-square
   expect(saved.player).toMatchObject({ layout: 'mini', artworkShape: 'portrait', artworkSide: 'right', progressStyle: 'waveform', progressThumb: 'ring', showPrevious: false, showNext: false, showShuffle: false, showRepeat: false, recordLabel: 'SIDE B · 007', lyrics: 'เก็บเพลงนี้ไว้\n君と見た夕暮れ\nA moment to remember', extraText: 'CHIANG MAI · OUR LITTLE PLAYLIST' });
   expect(saved.background).toBe('#e9e2d7');
   await page.reload(); await expect(page.locator('#template')).toBeEnabled();
-  await page.getByText('Artwork & layout', { exact: true }).click(); await expect(page.locator('#player-artworkShape')).toHaveValue('portrait'); await expect(page.locator('#player-artworkSide')).toHaveValue('right');
-  await page.locator('#player-artworkShape').selectOption('circle');
+  await expandInspector(page, 'Artwork & layout'); await expect(page.locator('#player-artworkShape')).toHaveValue('portrait'); await expect(page.locator('#player-artworkSide')).toHaveValue('right');
+  await revealInspector(page.locator('#player-artworkShape')); await page.locator('#player-artworkShape').selectOption('circle');
   const round = await photo.evaluate(element => ({ radius: getComputedStyle(element).borderTopLeftRadius, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height }));
   expect(round.radius).toContain('50%'); expect(round.width).toBeCloseTo(round.height, 1);
-  await page.getByText('Player appearance', { exact: true }).click();
-  await expect(page.getByRole('switch', { name: 'Show next track', exact: true })).not.toBeChecked();
+  await expandInspector(page, 'Player appearance');
+  await expect(page.getByRole('switch', { includeHidden: true, name: 'Show next track', exact: true })).not.toBeChecked();
   await page.getByRole('button', { name: 'Lyric Focus', exact: true }).click(); await expect(page.locator('#player-lyrics')).toHaveValue(saved.player.lyrics);
-  await page.locator('#language').selectOption('ja'); await expect(page.locator('#player-extraText')).toHaveValue(saved.player.extraText);
-  await page.locator('#language').selectOption('th'); await expect(page.locator('#title')).toHaveValue(saved.title);
+  await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('ja'); await expect(page.locator('#player-extraText')).toHaveValue(saved.player.extraText);
+  await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('th'); await expect(page.locator('#title')).toHaveValue(saved.title);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); expect(errors).toEqual([]);
 });
 
@@ -67,13 +68,13 @@ test('glass surface, vinyl and decorative progress export correctly without lock
   test.setTimeout(90000);
   await setup(page);
   await page.getByRole('button', { name: 'Glass Player', exact: true }).click();
-  await page.locator('#player-background-mode').selectOption('solid'); await page.locator('#background').fill('#112233');
-  await page.getByText('Player panel', { exact: true }).click();
-  await page.locator('#player-panel').selectOption('solid'); await page.locator('#player-panelColor').fill('#ffffff');
-  await page.getByLabel('Panel opacity', { exact: true }).fill('100'); await expect(page.locator('#foreground')).toHaveValue('#232927');
-  await page.getByText('Player appearance', { exact: true }).click();
+  await revealInspector(page.locator('#player-background-mode')); await page.locator('#player-background-mode').selectOption('solid'); await revealInspector(page.locator('#background')); await page.locator('#background').fill('#112233');
+  await expandInspector(page, 'Player panel');
+  await revealInspector(page.locator('#player-panel')); await page.locator('#player-panel').selectOption('solid'); await revealInspector(page.locator('#player-panelColor')); await page.locator('#player-panelColor').fill('#ffffff');
+  await revealInspector(page.getByLabel('Panel opacity', { exact: true })); await page.getByLabel('Panel opacity', { exact: true }).fill('100'); await expect(page.locator('#foreground')).toHaveValue('#232927');
+  await expandInspector(page, 'Player appearance');
   for (const style of ['line', 'thick', 'segments', 'waveform']) {
-    await page.locator('#player-progressStyle').selectOption(style);
+    await revealInspector(page.locator('#player-progressStyle')); await page.locator('#player-progressStyle').selectOption(style);
     await page.locator('.wallpaper').screenshot({ path: testInfo.outputPath(`progress-${style}.png`) });
   }
   await expect(page.getByRole('status').first()).toHaveText('Saved on this device');
@@ -87,15 +88,15 @@ test('glass surface, vinyl and decorative progress export correctly without lock
   });
   expect(pixels).toMatchObject({ width: 1179, height: 2556, corner: [17, 34, 51] });
   for (const channel of pixels.panel) expect(channel).toBeGreaterThan(230); // near-white; the artwork's soft drop shadow legitimately tints the panel slightly
-  await page.getByRole('switch', { name: 'Lock Screen preview', exact: true }).uncheck();
+  await page.getByRole('switch', { includeHidden: true, name: 'Lock Screen preview', exact: true }).uncheck();
   const second = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download PNG' }).click(); await second;
   const plain = await page.evaluate(async () => {
     const image = new Image(); image.src = document.querySelector<HTMLAnchorElement>('.download-result a')!.href; await image.decode(); const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d')!.drawImage(image, 0, 0); return canvas.toDataURL();
   });
   expect(plain).toBe(pixels.data);
   await page.getByRole('button', { name: 'Vinyl Session', exact: true }).click();
-  await page.locator('#player-recordColor').fill('#293b42'); await page.locator('#player-recordLabelColor').fill('#f0bf80'); await page.locator('#player-recordLabel').fill('OUR SIDE A');
-  await page.getByLabel('Record reveal', { exact: true }).fill('85');
+  await revealInspector(page.locator('#player-recordColor')); await page.locator('#player-recordColor').fill('#293b42'); await revealInspector(page.locator('#player-recordLabelColor')); await page.locator('#player-recordLabelColor').fill('#f0bf80'); await revealInspector(page.locator('#player-recordLabel')); await page.locator('#player-recordLabel').fill('OUR SIDE A');
+  await revealInspector(page.getByLabel('Record reveal', { exact: true })); await page.getByLabel('Record reveal', { exact: true }).fill('85');
   await expect(page.getByRole('status').first()).toHaveText('Saved on this device');
   await page.locator('.wallpaper').screenshot({ path: testInfo.outputPath('custom-vinyl.png') });
   const record = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download PNG' }).click(); await record;

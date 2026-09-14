@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { revealInspector } from './inspector';
 
 test('Now Playing is a customizable preset inside the unified Music Player', async ({ page }) => {
   const errors: string[] = [];
@@ -19,6 +20,7 @@ test('Now Playing is a customizable preset inside the unified Music Player', asy
   await page.locator('#photo-upload').setInputFiles({ name: 'two-colors.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') });
   await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
 
+  await revealInspector(page.locator('#background'));
   await expect(page.locator('#background')).toBeVisible();
   await expect(page.locator('.swatches')).toBeVisible();
   const backgroundBefore = await page.locator('#background').inputValue();

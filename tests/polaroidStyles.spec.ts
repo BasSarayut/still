@@ -1,3 +1,4 @@
+import { revealInspector, expandInspector } from './inspector';
 import { expect, test } from '@playwright/test';
 
 test('Polaroid presets preserve content and custom tilted cards survive reload and export', async ({ page }, testInfo) => {
@@ -5,8 +6,8 @@ test('Polaroid presets preserve content and custom tilted cards survive reload a
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('#template')).toBeEnabled();
-  await page.locator('#language').selectOption('en');
-  await page.locator('#template').selectOption('polaroid');
+  await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('en');
+  await revealInspector(page.locator('#template')); await page.locator('#template').selectOption('polaroid');
   const imageData = await page.evaluate(() => {
     const canvas = document.createElement('canvas'); canvas.width = 1200; canvas.height = 900;
     const context = canvas.getContext('2d')!;
@@ -18,9 +19,9 @@ test('Polaroid presets preserve content and custom tilted cards survive reload a
   });
   await page.locator('#photo-upload').setInputFiles({ name: 'memory.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') });
   await expect(page.getByRole('button', { name: 'Download PNG' })).toBeEnabled();
-  await page.locator('#title').fill('夕暮れの記憶'); await page.locator('#artist').fill('Our little memory');
-  await page.locator('#background').fill('#d7dfd9');
-  await page.getByRole('switch', { name: 'Lock Screen preview', exact: true }).uncheck();
+  await revealInspector(page.locator('#title')); await page.locator('#title').fill('夕暮れの記憶'); await revealInspector(page.locator('#artist')); await page.locator('#artist').fill('Our little memory');
+  await revealInspector(page.locator('#background')); await page.locator('#background').fill('#d7dfd9');
+  await page.getByRole('switch', { includeHidden: true, name: 'Lock Screen preview', exact: true }).uncheck();
   for (const preset of ['Classic', 'Clean', 'Diary', 'Cinema', 'Noir']) {
     await page.getByRole('button', { name: new RegExp(`^${preset} `) }).click();
     await expect(page.getByRole('button', { name: new RegExp(`^${preset} `) })).toHaveAttribute('aria-pressed', 'true');
@@ -31,20 +32,20 @@ test('Polaroid presets preserve content and custom tilted cards survive reload a
     await page.locator('.wallpaper').screenshot({ path: testInfo.outputPath(`${preset}.png`) });
   }
   await page.getByRole('button', { name: /^Diary / }).click();
-  await page.getByText('Paper frame & layout', { exact: true }).click();
-  await page.getByLabel('Photo aspect ratio', { exact: true }).selectOption('portrait');
-  await page.getByLabel('Card rotation', { exact: true }).fill('8');
-  await page.getByLabel('Paper border width', { exact: true }).fill('28');
-  await page.getByLabel('Paper color', { exact: true }).fill('#f4d4ba');
-  await page.getByLabel('Paper ink color', { exact: true }).fill('#402e38');
-  await page.getByText('Fonts & text colors', { exact: true }).click();
-  const title = page.getByRole('group', { name: 'Song title / text', exact: true });
-  await title.getByLabel('Font', { exact: true }).selectOption('japanese');
-  await title.getByLabel('Font size', { exact: true }).fill('28');
-  await page.getByText('Tape, notes & details', { exact: true }).click();
-  await page.getByLabel('Decorative tape', { exact: true }).selectOption('corners');
-  await page.getByLabel('Date / note text', { exact: true }).fill('2026.09.12 / ความทรงจำ');
-  await page.locator('#zoom').fill('2');
+  await expandInspector(page, 'Paper frame & layout');
+  await revealInspector(page.getByLabel('Photo aspect ratio', { exact: true })); await page.getByLabel('Photo aspect ratio', { exact: true }).selectOption('portrait');
+  await revealInspector(page.getByLabel('Card rotation', { exact: true })); await page.getByLabel('Card rotation', { exact: true }).fill('8');
+  await revealInspector(page.getByLabel('Paper border width', { exact: true })); await page.getByLabel('Paper border width', { exact: true }).fill('28');
+  await revealInspector(page.getByLabel('Paper color', { exact: true })); await page.getByLabel('Paper color', { exact: true }).fill('#f4d4ba');
+  await revealInspector(page.getByLabel('Paper ink color', { exact: true })); await page.getByLabel('Paper ink color', { exact: true }).fill('#402e38');
+  await expandInspector(page, 'Fonts & text colors');
+  const title = page.getByRole('group', { includeHidden: true, name: 'Song title / text', exact: true });
+  await revealInspector(title.getByLabel('Font', { exact: true })); await title.getByLabel('Font', { exact: true }).selectOption('japanese');
+  await revealInspector(title.getByLabel('Font size', { exact: true })); await title.getByLabel('Font size', { exact: true }).fill('28');
+  await expandInspector(page, 'Tape, notes & details');
+  await revealInspector(page.getByLabel('Decorative tape', { exact: true })); await page.getByLabel('Decorative tape', { exact: true }).selectOption('corners');
+  await revealInspector(page.getByLabel('Date / note text', { exact: true })); await page.getByLabel('Date / note text', { exact: true }).fill('2026.09.12 / ความทรงจำ');
+  await revealInspector(page.locator('#zoom')); await page.locator('#zoom').fill('2');
   const art = page.locator('.artwork-hit');
   await art.scrollIntoViewIfNeeded();
   const rect = (await art.boundingBox())!;
@@ -58,14 +59,14 @@ test('Polaroid presets preserve content and custom tilted cards survive reload a
   expect(saved.crop.y).toBeCloseTo(0.5, 1);
   await page.reload();
   await expect(page.locator('#template')).toHaveValue('polaroid');
-  await page.getByText('Paper frame & layout', { exact: true }).click();
+  await expandInspector(page, 'Paper frame & layout');
   await expect(page.getByLabel('Card rotation', { exact: true })).toHaveValue('8');
   await expect(page.getByLabel('Photo aspect ratio', { exact: true })).toHaveValue('portrait');
   await expect(page.getByLabel('Paper color', { exact: true })).toHaveValue('#f4d4ba');
-  await page.getByText('Tape, notes & details', { exact: true }).click();
+  await expandInspector(page, 'Tape, notes & details');
   await expect(page.getByLabel('Date / note text', { exact: true })).toHaveValue('2026.09.12 / ความทรงจำ');
   await expect(page.getByLabel('Decorative tape', { exact: true })).toHaveValue('corners');
-  await page.locator('#elapsed').fill('bad');
+  await revealInspector(page.locator('#elapsed')); await page.locator('#elapsed').fill('bad');
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download PNG' }).click(); await download;
   await expect(page.locator('.download-result a')).toBeVisible();
   const pixels = await page.evaluate(async () => {
@@ -83,13 +84,13 @@ test('Polaroid presets preserve content and custom tilted cards survive reload a
   });
   expect(pixels).toEqual({ width: 1179, height: 2556, paper: [244, 212, 186] });
   await page.locator('.wallpaper').screenshot({ path: testInfo.outputPath('custom-diary.png') });
-  await page.getByRole('switch', { name: 'Show progress bar', exact: true }).check();
+  await page.getByRole('switch', { includeHidden: true, name: 'Show progress bar', exact: true }).check();
   await expect(page.getByRole('button', { name: 'Download PNG' })).toBeDisabled();
   await page.getByRole('button', { name: /^Clean / }).click();
   await page.getByRole('button', { name: /^Diary / }).click();
   await expect(page.getByLabel('Date / note text', { exact: true })).toHaveValue('2026.09.12 / ความทรงจำ');
-  await page.locator('#template').selectOption('custom'); await page.locator('#template').selectOption('polaroid');
-  await page.locator('#language').selectOption('ja');
+  await revealInspector(page.locator('#template')); await page.locator('#template').selectOption('custom'); await revealInspector(page.locator('#template')); await page.locator('#template').selectOption('polaroid');
+  await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('ja');
   await expect(page.locator('#title')).toHaveValue('夕暮れの記憶');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);

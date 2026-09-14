@@ -1,3 +1,4 @@
+import { revealInspector, expandInspector } from './inspector';
 import { expect, test } from '@playwright/test';
 
 test('new fonts load locally and persist in every template', async ({ page }) => {
@@ -7,19 +8,19 @@ test('new fonts load locally and persist in every template', async ({ page }) =>
   page.on('request', request => { if (!/^(http:\/\/localhost:5173|blob:|data:)/.test(request.url())) external.push(request.url()); });
   await page.goto('/');
   await expect(page.locator('#template')).toBeEnabled();
-  await page.locator('#language').selectOption('en');
+  await revealInspector(page.locator('#language')); await page.locator('#language').selectOption('en');
   for (const [template, selector, font] of [
     ['custom', '#player-title-font', 'spaceGrotesk'],
     ['polaroid', '#polaroid-title-font', 'mali'],
     ['albumCover', '#cover-font', 'thaiSerif'],
     ['concertTicket', '#ticket-field-font', 'oswald'],
   ]) {
-    await page.locator('#template').selectOption(template);
-    if (template !== 'albumCover') await page.getByText('Fonts & text colors', { exact: true }).click();
+    await revealInspector(page.locator('#template')); await page.locator('#template').selectOption(template);
+    if (template !== 'albumCover') await expandInspector(page, 'Fonts & text colors');
     const picker = page.locator(selector);
     await expect(picker.locator('option')).toHaveCount(16);
     await expect(picker.locator('optgroup').first()).toHaveAttribute('label', /Recommended/);
-    await picker.selectOption(font);
+    await revealInspector(picker); await picker.selectOption(font);
     await expect(picker).toHaveValue(font);
     await expect(page.getByRole('status').first()).toContainText('Saved on this device');
     await page.reload();

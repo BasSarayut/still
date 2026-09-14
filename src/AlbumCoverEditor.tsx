@@ -1,4 +1,5 @@
 import FontOptions from './FontOptions';
+import AdvancedSettings from './AdvancedSettings';
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { applyCoverPreset, createCoverText, type AlbumCover, type CoverPreset, type CoverText } from './albumCover';
@@ -72,9 +73,10 @@ export default function AlbumCoverEditor({ value, ink, copy, onChange, selected:
       <label className="field-label" htmlFor="cover-align">{copy.coverAlign}</label>
       <select id="cover-align" value={active.align} onChange={event => change({ align: event.target.value as CoverText['align'] })}><option value="left">{copy.coverLeft}</option><option value="center">{copy.coverCenter}</option><option value="right">{copy.coverRight}</option></select>
       <div className="color-row"><label htmlFor="cover-text-color">{copy.coverTextColor}</label><button className={`auto-button ${active.color === null ? 'active' : ''}`} aria-pressed={active.color === null} onClick={() => change({ color: null })}>{copy.coverInherit}</button><input id="cover-text-color" type="color" value={active.color ?? ink} onChange={event => change({ color: event.target.value })} /></div>
-      <details className="cover-details" open><summary>{copy.coverPosition}</summary><p className="field-hint">{copy.coverPositionHint}</p><div className="cover-grid">{number('x', copy.coverX, 0, 95, 0.5)}{number('y', copy.coverY, 0, 95, 0.5)}{number('width', copy.coverWidth, 5, 100, 0.5)}{number('opacity', copy.coverOpacity, 0, 1, 0.05)}</div></details>
+      <AdvancedSettings copy={copy}><details className="cover-details" open><summary>{copy.coverPosition}</summary><p className="field-hint">{copy.coverPositionHint}</p><div className="cover-grid">{number('x', copy.coverX, 0, 95, 0.5)}{number('y', copy.coverY, 0, 95, 0.5)}{number('width', copy.coverWidth, 5, 100, 0.5)}{number('opacity', copy.coverOpacity, 0, 1, 0.05)}</div></details>
       <details className="cover-details"><summary>{copy.coverSpacing}</summary><div className="cover-grid">{number('tracking', copy.coverTracking, -2, 12, 0.1)}{number('lineHeight', copy.coverLineHeight, 0.8, 3, 0.1)}</div></details>
       <div className="cover-grid">{number('rotation', extra.rotation, -180, 180)}{number('shadow', extra.shadow, 0, 20)}{number('stroke', extra.stroke, 0, 5, 0.5)}</div>
+      </AdvancedSettings>
     </div>}
   </div>;
 }

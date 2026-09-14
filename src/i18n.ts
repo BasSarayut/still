@@ -1,3 +1,4 @@
+import { inspectorMessages } from './inspectorI18n';
 import { useEffect, useState } from 'react';
 import { ticketMessages } from './ticketI18n';
 import { playerMessages } from './playerI18n';
@@ -5,6 +6,7 @@ import { playerMessages } from './playerI18n';
 export type Language = 'th' | 'en' | 'ja';
 
 const th = {
+  ...inspectorMessages.th,
   ...ticketMessages.th,
   ...playerMessages.th,
   polaroidPresetHint: 'เลือกสไตล์กระดาษ แล้วปรับต่อได้ รูป ข้อความ วันที่ และสีพื้นหลังที่เลือกจะยังอยู่',
@@ -90,6 +92,7 @@ export type MessageKey = keyof typeof th;
 export type Messages = Record<MessageKey, string>;
 
 const en: Messages = {
+  ...inspectorMessages.en,
   ...ticketMessages.en,
   ...playerMessages.en,
   polaroidPresetHint: 'Choose a paper style, then make it yours. Your photo, text, date, and chosen background color stay with you.',
@@ -172,6 +175,7 @@ const en: Messages = {
 };
 
 const ja: Messages = {
+  ...inspectorMessages.ja,
   ...ticketMessages.ja,
   ...playerMessages.ja,
   polaroidPresetHint: '紙のスタイルを選んで、自由に調整。写真、文字、日付、選択した背景色はそのまま残ります。',

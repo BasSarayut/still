@@ -1,3 +1,4 @@
+import { revealInspector } from './inspector';
 import { expect, test } from '@playwright/test';
 
 test('photo editing, exact PNG, guide separation and draft recovery', async ({ page }) => {
@@ -18,17 +19,17 @@ test('photo editing, exact PNG, guide separation and draft recovery', async ({ p
   });
   await page.locator('#photo-upload').setInputFiles({ name: 'two-colors.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') });
   await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
-  await page.getByLabel('ชื่อเพลง / ข้อความ').fill('青色がすき。 เพลงของเรา');
-  await page.getByLabel('ศิลปิน', { exact: true }).fill('keiju');
-  await page.getByLabel('ข้อความเครดิต').fill('@my_moment');
-  await page.getByLabel('รุ่น iPhone', { exact: true }).selectOption('iPhone 12 mini');
-  await page.getByLabel('ซูมรูป', { exact: true }).fill('2');
+  await revealInspector(page.getByLabel('ชื่อเพลง / ข้อความ')); await page.getByLabel('ชื่อเพลง / ข้อความ').fill('青色がすき。 เพลงของเรา');
+  await revealInspector(page.getByLabel('ศิลปิน', { exact: true })); await page.getByLabel('ศิลปิน', { exact: true }).fill('keiju');
+  await revealInspector(page.getByLabel('ข้อความเครดิต')); await page.getByLabel('ข้อความเครดิต').fill('@my_moment');
+  await revealInspector(page.getByLabel('รุ่น iPhone', { exact: true })); await page.getByLabel('รุ่น iPhone', { exact: true }).selectOption('iPhone 12 mini');
+  await revealInspector(page.getByLabel('ซูมรูป', { exact: true })); await page.getByLabel('ซูมรูป', { exact: true }).fill('2');
   const art = page.getByRole('button', { name: 'เลื่อนรูปปก ใช้ปุ่มลูกศรเพื่อจัดตำแหน่ง' });
-  await art.focus();
+  await revealInspector(art); await art.focus();
   for (let index = 0; index < 20; index++) await page.keyboard.press('ArrowRight');
-  await page.getByLabel('เวลาปัจจุบัน').fill('9:99');
+  await revealInspector(page.getByLabel('เวลาปัจจุบัน')); await page.getByLabel('เวลาปัจจุบัน').fill('9:99');
   await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeDisabled();
-  await page.getByLabel('เวลาปัจจุบัน').fill('0:42');
+  await revealInspector(page.getByLabel('เวลาปัจจุบัน')); await page.getByLabel('เวลาปัจจุบัน').fill('0:42');
   await expect(page.getByText('บันทึกในเครื่องแล้ว', { exact: true })).toBeVisible();
   const firstDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'ดาวน์โหลด PNG' }).click();
@@ -49,7 +50,7 @@ test('photo editing, exact PNG, guide separation and draft recovery', async ({ p
   expect(first.width).toBe(1080); expect(first.height).toBe(2340);
   expect(first.uniformTop).toBe(true);
   expect(first.cover).toEqual([84, 117, 117, 255]);
-  await page.getByRole('switch', { name: 'จำลอง Lock Screen' }).uncheck();
+  await page.getByRole('switch', { includeHidden: true, name: 'จำลอง Lock Screen' }).uncheck();
   await expect(page.locator('.lock-guides')).toHaveCount(0);
   await page.getByRole('button', { name: 'ดาวน์โหลด PNG' }).click();
   await expect(page.getByText('PNG พร้อมแล้ว', { exact: true })).toBeVisible();
@@ -61,7 +62,7 @@ test('photo editing, exact PNG, guide separation and draft recovery', async ({ p
   await expect(page.getByLabel('รุ่น iPhone', { exact: true })).toHaveValue('iPhone 12 mini');
   await expect(page.getByLabel('ซูมรูป', { exact: true })).toHaveValue('2');
   await expect(page.getByLabel('ข้อความเครดิต')).toHaveValue('@my_moment');
-  await expect(page.getByRole('switch', { name: 'จำลอง Lock Screen' })).not.toBeChecked();
+  await expect(page.getByRole('switch', { includeHidden: true, name: 'จำลอง Lock Screen' })).not.toBeChecked();
   await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeEnabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(errors).toEqual([]);
@@ -75,6 +76,6 @@ test('invalid upload preserves the previous editor and can be retried', async ({
   await expect(page.getByRole('alert')).toContainText('เปิดรูปนี้ไม่ได้');
   await expect(page.getByLabel('ชื่อเพลง / ข้อความ')).toBeEnabled();
   await expect(page.getByRole('button', { name: 'ดาวน์โหลด PNG' })).toBeDisabled();
-  await page.getByLabel('ชื่อเพลง / ข้อความ').fill('ยังแต่งต่อได้');
+  await revealInspector(page.getByLabel('ชื่อเพลง / ข้อความ')); await page.getByLabel('ชื่อเพลง / ข้อความ').fill('ยังแต่งต่อได้');
   await expect(page.getByLabel('ชื่อเพลง / ข้อความ')).toHaveValue('ยังแต่งต่อได้');
 });

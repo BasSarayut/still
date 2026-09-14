@@ -1,3 +1,4 @@
+import AdvancedSettings from './AdvancedSettings';
 import FontOptions from './FontOptions';
 import { applyPlayerPreset, type PlayerSettings, type PlayerPreset } from './musicPlayer';
 import { PlayerLayoutControls, PlayerNoteControls, PlayerProgressControls, PlayerSectionReset, PlayerSurfaceControls, PlayerTransportControls } from './PlayerAppearance';
@@ -25,22 +26,23 @@ export function PlayerBackground({ value, copy, onChange }: Props) {
   </div>;
 }
 
-export default function PlayerEditor({ value, copy, onChange, ink }: Props & { ink: string }) {
+export default function PlayerEditor({ value, copy, onChange, ink, panel = 'style' }: Props & { ink: string; panel?: 'text' | 'style' }) {
   const props = { value, copy, onChange };
   const update = (patch: Partial<PlayerSettings>) => onChange({ ...value, ...patch });
   const range = (key: 'artworkSize' | 'artworkRadius' | 'artworkShadow' | 'position' | 'gap' | 'titleSize' | 'artistSize' | 'titleWeight' | 'artistWeight' | 'controlsScale', label: string, min: number, max: number, step = 1, suffix = '') => <Range label={label} value={value[key]} min={min} max={max} step={step} suffix={suffix} onChange={next => update({ [key]: next })} />;
   const toggle = (key: 'showProgress' | 'showTimes' | 'showFavorite', label: string) => <label className="toggle-label"><span>{label}</span><input type="checkbox" role="switch" checked={value[key]} onChange={event => update({ [key]: event.target.checked })} /><span className="toggle-track" aria-hidden="true" /></label>;
   const select = (key: 'align' | 'timeDisplay' | 'controls' | 'glyph' | 'buttonStyle', label: string, options: [string, string][]) => <div className="player-select"><label htmlFor={`player-${key}`}>{label}</label><select id={`player-${key}`} value={value[key]} onChange={event => update({ [key]: event.target.value })}>{options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}</select></div>;
   return <div className="player-editor">
-    <details className="player-details"><summary>{copy.playerArtwork}</summary>
+    {panel === 'style' && <><details className="player-details" open><summary>{copy.playerArtwork}</summary>
       <PlayerLayoutControls {...props} />
       {range('artworkSize', copy.playerArtworkSize, 280, 420)}{range('artworkRadius', copy.playerRadius, 0, 48)}{range('artworkShadow', copy.playerShadow, 0, 80, 1, '%')}
       {range('position', copy.playerPosition, 15, 65, 0.5, '%')}{value.layout !== 'mini' && value.layout !== 'lyrics' && range('gap', copy.playerGap, 8, 48)}
       <p className="field-hint">{copy.playerLayoutHint}</p>
       <PlayerSectionReset {...props} keys={['layout', 'artworkShape', 'artworkSide', 'artworkSize', 'artworkRadius', 'artworkShadow', 'position', 'gap']} />
     </details>
-    <PlayerSurfaceControls {...props} ink={ink} />
-    <details className="player-details"><summary>{copy.playerTypography}</summary>
+    </>}
+    {panel === 'text' && <>
+    <details className="player-details" open><summary>{copy.playerTypography}</summary>
       {select('align', copy.coverAlign, [['left', copy.coverLeft], ['center', copy.coverCenter]])}
       {(['title', 'artist'] as const).map(kind => <fieldset className="player-type-group" key={kind}><legend>{kind === 'title' ? copy.title : copy.artist}</legend>
         <div className="player-select"><label htmlFor={`player-${kind}-font`}>{copy.coverFont}</label><select id={`player-${kind}-font`} value={value[`${kind}Font`]} onChange={event => update({ [`${kind}Font`]: event.target.value })}><FontOptions template="custom" /></select></div>
@@ -50,7 +52,8 @@ export default function PlayerEditor({ value, copy, onChange, ink }: Props & { i
       </fieldset>)}
       <PlayerSectionReset {...props} keys={['titleFont', 'artistFont', 'titleSize', 'artistSize', 'titleWeight', 'artistWeight', 'titleColor', 'artistColor', 'align']} />
     </details>
-    <PlayerNoteControls {...props} />
+    <PlayerNoteControls {...props} /></>}
+    {panel === 'style' && <AdvancedSettings copy={copy}><PlayerSurfaceControls {...props} ink={ink} />
     <details className="player-details"><summary>{copy.playerPlayback}</summary>
       {toggle('showProgress', copy.showProgress)}
       {value.showProgress && <><PlayerProgressControls {...props} />{toggle('showTimes', copy.playerShowTimes)}{value.showTimes && select('timeDisplay', copy.playerTimeDisplay, [['duration', copy.duration], ['remaining', copy.playerRemaining]])}</>}
@@ -61,5 +64,6 @@ export default function PlayerEditor({ value, copy, onChange, ink }: Props & { i
       <PaletteEditor value={value} copy={copy} onChange={update} />
       <PlayerSectionReset {...props} keys={['showProgress', 'showTimes', 'timeDisplay', 'progressStyle', 'progressThumb', 'controls', 'glyph', 'buttonStyle', 'controlsScale', 'showPrevious', 'showNext', 'showShuffle', 'showRepeat', 'showFavorite', 'paletteStyle', 'paletteCount', 'paletteOrder', 'paletteSize', 'paletteGap']} />
     </details>
+    </AdvancedSettings>}
   </div>;
 }
